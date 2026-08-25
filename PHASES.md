@@ -154,7 +154,54 @@ verified before the next begins.
     capability gate, branch-scoping rejection, and a Phase-1 regression
     (`post_goods_receipt` block intake still works unmodified with the new
     columns/trigger present).
-  - Milestone 4 (Yield + Waste + Remnants) onward: not started.
+  - **Milestone 4 — Yield + Waste + Remnants** ✅: extends
+    `complete_processing_job` (same function, `CREATE OR REPLACE`, not a new
+    pipeline) so every output item may now be a `slab` or a `remnant`
+    (researched distinction: a remnant is a smaller-but-still-usable offcut —
+    vanity tops, thresholds, tile blanks — structurally identical to a slab,
+    differing only in business classification, reusing the `unit_type`
+    column Phase 0 already had rather than inventing new columns or a
+    parallel table), and the array may now be **empty**, representing a
+    block that turned out fully unusable (a real scenario — e.g. an internal
+    crack found once cut — not an error). Waste is deliberately **never**
+    a genealogy row: it has no physical identity to track (saw-kerf loss,
+    dust, unusable trim are discarded, not inventoried), so it is derived
+    purely by mass balance — `waste = block volume − Σ(output volumes)` —
+    and stored only as an aggregate (`waste_volume`, `yield_percentage`) on
+    the job. `thickness` became a required field on every output item (it
+    was optional in Milestone 3) because volume — and therefore yield — needs
+    it; every item's volume is computed the same researched way Milestone 1
+    computed block volume (length × width × thickness normalized to CM via
+    the existing UOM engine, cm³ — math, not a business rule), summed, and
+    compared against the block's own recorded volume (also converted back to
+    cm³) — total output volume exceeding the block's volume is physically
+    impossible and rejected outright, never silently allowed. Yield is
+    expressed as a volume percentage (real-world convention: a slab's "yield
+    share" is area × thickness, since sawing/squaring lose material as kerf
+    and trim, and volume is the only unit both a block and its cut pieces
+    can be honestly compared in). New `processing_jobs` columns:
+    `yield_percentage`, `waste_volume`/`waste_volume_uom_id`,
+    `actual_remnant_count` (mirroring the existing `actual_slab_count`).
+    Live-verified, all independently hand-computed and matched exactly:
+    high yield (~88%, single slab near the block's own volume), low yield
+    (~0.09%, a small slab against a large CFT-denominated block), zero yield
+    (empty array, 100% waste), a combined multiple-slabs + remnant +
+    decimal-dimension scenario (three output units, yield ~7.51%, correctly
+    split 2 slabs / 1 remnant), overflow rejection, missing-thickness
+    rejection, invalid-`unit_type` rejection, no-recorded-volume rejection,
+    and branch-scoping/capability-gate protections re-confirmed intact after
+    the `CREATE OR REPLACE`. **A real bug was found and fixed during this
+    milestone's own testing**: the overflow-rejection error message used
+    printf-style `%.6f` inside `RAISE EXCEPTION`, which plpgsql does not
+    support — the literal text `.6f` appeared in the error instead of a
+    formatted number. Cosmetic only (the rejection itself fired correctly),
+    fixed immediately by rounding the values before substitution, re-verified
+    the corrected message live. Milestone 3's test file was updated to add
+    the now-required `thickness` field and block `volume` to its fixtures,
+    and its empty-array test was rewritten from "must reject" to "must
+    succeed as 100% waste," reflecting this milestone's intentionally
+    relaxed rule.
+  - Milestone 5 (QC) onward: not started.
 - **Phase 3 — Stone Fabrication/Projects mode**: project-based job costing
   consuming slabs, invoiced via Phase 1's engine.
 - **Phase 4 — Tile Manufacturing mode**: recipes/BOM, batch production, shade/

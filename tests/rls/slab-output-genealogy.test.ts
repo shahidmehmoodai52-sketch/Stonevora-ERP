@@ -17,12 +17,16 @@ describe.skipIf(!hasServiceRoleKey)("Factory Milestone 3: Slab Output + Genealog
   let inchUomId: string;
   let sqftUomId: string;
   let sqmUomId: string;
+  let m3UomId: string;
 
   async function makeBlock(unitCode: string) {
     const admin = adminClient();
+    // volume is required as of Milestone 4 (complete_processing_job needs it
+    // for yield/waste math) -- an arbitrary non-zero value works fine here
+    // since these tests don't assert on yield.
     const { data: unit } = await admin
       .from("inventory_units")
-      .insert({ tenant_id: tenantId, product_id: productId, unit_code: unitCode, unit_type: "block", status: "in_stock" })
+      .insert({ tenant_id: tenantId, product_id: productId, unit_code: unitCode, unit_type: "block", status: "in_stock", volume: 10, volume_uom_id: m3UomId })
       .select("id").single();
     return unit!.id as string;
   }
@@ -52,12 +56,13 @@ describe.skipIf(!hasServiceRoleKey)("Factory Milestone 3: Slab Output + Genealog
     const { data: capability } = await admin.from("business_capabilities").select("id").eq("code", "block_slab_factory").single();
     await admin.from("tenant_capabilities").insert({ tenant_id: tenantId, capability_id: capability!.id });
 
-    const { data: uoms } = await admin.from("uom").select("id, code").in("code", ["BLOCK", "CM", "INCH", "SQFT", "SQM"]).is("tenant_id", null);
+    const { data: uoms } = await admin.from("uom").select("id, code").in("code", ["BLOCK", "CM", "INCH", "SQFT", "SQM", "M3"]).is("tenant_id", null);
     blockUomId = uoms!.find((u) => u.code === "BLOCK")!.id;
     cmUomId = uoms!.find((u) => u.code === "CM")!.id;
     inchUomId = uoms!.find((u) => u.code === "INCH")!.id;
     sqftUomId = uoms!.find((u) => u.code === "SQFT")!.id;
     sqmUomId = uoms!.find((u) => u.code === "SQM")!.id;
+    m3UomId = uoms!.find((u) => u.code === "M3")!.id;
 
     const { data: branchA } = await owner.client
       .from("branches").insert({ tenant_id: tenantId, code: "BA", name: "Branch A", is_head_office: true }).select("id").single();
@@ -97,7 +102,7 @@ describe.skipIf(!hasServiceRoleKey)("Factory Milestone 3: Slab Output + Genealog
     const { data: slabIds, error } = await owner.client.rpc("complete_processing_job", {
       p_processing_job_id: jobId,
       p_slabs: [
-        { length: 120, width: 60, dimension_uom_id: cmUomId, area_uom_id: sqftUomId, quality_grade: "A" },
+        { length: 120, width: 60, thickness: 2, dimension_uom_id: cmUomId, area_uom_id: sqftUomId, quality_grade: "A" },
         { length: 100, width: 50, thickness: 2, dimension_uom_id: inchUomId, area_uom_id: sqmUomId, quality_grade: "B", usable_area: 3.0 },
       ],
     });
@@ -141,26 +146,35 @@ describe.skipIf(!hasServiceRoleKey)("Factory Milestone 3: Slab Output + Genealog
 
     const { error } = await owner.client.rpc("complete_processing_job", {
       p_processing_job_id: jobId,
-      p_slabs: [{ length: 100, width: 100, dimension_uom_id: cmUomId, area_uom_id: sqmUomId, usable_area: 2.0 }],
+      p_slabs: [{ length: 100, width: 100, thickness: 2, dimension_uom_id: cmUomId, area_uom_id: sqmUomId, usable_area: 2.0 }],
     });
     expect(error).not.toBeNull();
-    expect(error?.message).toMatch(/usable_area must be between 0 and the gross slab area/);
+    expect(error?.message).toMatch(/usable_area must be between 0 and the gross area/);
   });
 
-  test("rejects an empty slabs array and missing required per-slab fields", async () => {
+  // An empty output array is valid as of Milestone 4 (Yield + Waste +
+  // Remnants) -- it represents a block that turned out fully unusable
+  // (0% yield, 100% waste), not an error.
+  test("accepts an empty slabs array as a fully-wasted block, and rejects missing required per-slab fields", async () => {
     const blockId = await makeBlock(`BLK-${Date.now()}-C`);
     const jobId = await makeStartedJob(blockId, `JOB-${Date.now()}-C`);
 
-    const { error: emptyError } = await owner.client.rpc("complete_processing_job", { p_processing_job_id: jobId, p_slabs: [] });
-    expect(emptyError).not.toBeNull();
-    expect(emptyError?.message).toMatch(/At least one output slab is required/);
+    const { data: emptyResult, error: emptyError } = await owner.client.rpc("complete_processing_job", { p_processing_job_id: jobId, p_slabs: [] });
+    expect(emptyError).toBeNull();
+    expect(emptyResult).toEqual([]);
+    const { data: job } = await owner.client.from("processing_jobs").select("status, yield_percentage, actual_slab_count").eq("id", jobId).single();
+    expect(job?.status).toBe("completed");
+    expect(Number(job?.yield_percentage)).toBe(0);
+    expect(job?.actual_slab_count).toBe(0);
 
+    const blockId2 = await makeBlock(`BLK-${Date.now()}-C2`);
+    const jobId2 = await makeStartedJob(blockId2, `JOB-${Date.now()}-C2`);
     const { error: missingFieldsError } = await owner.client.rpc("complete_processing_job", {
-      p_processing_job_id: jobId,
+      p_processing_job_id: jobId2,
       p_slabs: [{ length: 100, width: 100, dimension_uom_id: cmUomId }],
     });
     expect(missingFieldsError).not.toBeNull();
-    expect(missingFieldsError?.message).toMatch(/requires length, width, dimension_uom_id, and area_uom_id/);
+    expect(missingFieldsError?.message).toMatch(/requires length, width, thickness, dimension_uom_id, and area_uom_id/);
   });
 
   test("branch scoping: a branch-B-scoped user cannot complete a branch-A job", async () => {
@@ -169,7 +183,7 @@ describe.skipIf(!hasServiceRoleKey)("Factory Milestone 3: Slab Output + Genealog
 
     const { error } = await branchBUser.client.rpc("complete_processing_job", {
       p_processing_job_id: jobId,
-      p_slabs: [{ length: 100, width: 100, dimension_uom_id: cmUomId, area_uom_id: sqmUomId }],
+      p_slabs: [{ length: 100, width: 100, thickness: 2, dimension_uom_id: cmUomId, area_uom_id: sqmUomId }],
     });
     expect(error).not.toBeNull();
     expect(error?.message).toMatch(/do not have access to the branch/);
@@ -185,7 +199,7 @@ describe.skipIf(!hasServiceRoleKey)("Factory Milestone 3: Slab Output + Genealog
 
     const { error } = await owner.client.rpc("complete_processing_job", {
       p_processing_job_id: jobId,
-      p_slabs: [{ length: 100, width: 100, dimension_uom_id: cmUomId, area_uom_id: sqmUomId }],
+      p_slabs: [{ length: 100, width: 100, thickness: 2, dimension_uom_id: cmUomId, area_uom_id: sqmUomId }],
     });
     expect(error).not.toBeNull();
     expect(error?.message).toMatch(/Block\/Slab Factory capability is not enabled/);

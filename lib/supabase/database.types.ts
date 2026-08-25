@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -1306,6 +1306,7 @@ export type Database = {
       }
       processing_jobs: {
         Row: {
+          actual_remnant_count: number | null
           actual_slab_count: number | null
           branch_id: string
           cancelled_at: string | null
@@ -1325,8 +1326,12 @@ export type Database = {
           tenant_id: string
           updated_at: string
           warehouse_id: string
+          waste_volume: number | null
+          waste_volume_uom_id: string | null
+          yield_percentage: number | null
         }
         Insert: {
+          actual_remnant_count?: number | null
           actual_slab_count?: number | null
           branch_id: string
           cancelled_at?: string | null
@@ -1346,8 +1351,12 @@ export type Database = {
           tenant_id: string
           updated_at?: string
           warehouse_id: string
+          waste_volume?: number | null
+          waste_volume_uom_id?: string | null
+          yield_percentage?: number | null
         }
         Update: {
+          actual_remnant_count?: number | null
           actual_slab_count?: number | null
           branch_id?: string
           cancelled_at?: string | null
@@ -1367,6 +1376,9 @@ export type Database = {
           tenant_id?: string
           updated_at?: string
           warehouse_id?: string
+          waste_volume?: number | null
+          waste_volume_uom_id?: string | null
+          yield_percentage?: number | null
         }
         Relationships: [
           {
@@ -1409,6 +1421,13 @@ export type Database = {
             columns: ["warehouse_id"]
             isOneToOne: false
             referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "processing_jobs_waste_volume_uom_id_fkey"
+            columns: ["waste_volume_uom_id"]
+            isOneToOne: false
+            referencedRelation: "uom"
             referencedColumns: ["id"]
           },
         ]
