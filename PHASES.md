@@ -85,7 +85,40 @@ verified before the next begins.
     rejection, volume math (both CFT and M3, independently hand-verified),
     cost preservation, tenant isolation, and the full Phase 1 regression flow
     — zero Phase 0/Phase 1 files modified.
-  - Milestone 2 (Processing/Cutting) onward: not started.
+  - **Milestone 2 — Processing/Cutting** ✅: models the job wrapper around a
+    block's cutting/squaring/polishing lifecycle (researched real gangsaw/
+    multi-wire → squaring → polishing workflow), not yet the slab output
+    itself (that's Milestone 3) or yield/waste (Milestone 4) — a job here only
+    reaches `in_progress`/`cancelled`. New `processing_jobs` table (stage,
+    machine, operator, status, start/complete/cancel timestamps) and a new
+    `production` permission resource, added exactly like `purchasing`/`sales`
+    were for their own domains. `start_processing_job`/`cancel_processing_job`
+    are atomic, row-locked RPCs: starting moves the input block from
+    `in_stock` to a new `'processing'` status (so it can't be double-consumed
+    or incorrectly appear available) and the job to `in_progress`; cancelling
+    an in-progress job restores the block to `in_stock`, mirroring
+    `cancel_stock_transfer`'s "leave inventory exactly as it was" guarantee.
+    Double-processing of the same block is blocked twice over: a partial
+    unique index (`processing_jobs` on `input_unit_id` where status is draft/
+    in_progress) prevents even creating a second active job at the schema
+    level, and the RPC re-validates the block's live status under a row lock
+    for concurrency safety.
+    **A real security bug was found and fixed during this milestone's own
+    live-database verification**: the first version of `start_processing_job`/
+    `cancel_processing_job` checked `has_permission()`/`has_capability()` but
+    never `has_branch_access()`. Because both are `SECURITY DEFINER`
+    functions, `processing_jobs`' branch-scoped RLS policies do not apply
+    inside their body — a user scoped only to Branch B was able to actually
+    start/cancel a Branch A job outright (correctly blocked only from
+    *seeing* it via a plain select), the same class of gap the Foundation
+    Hardening work fixed for the transfer RPCs. Fixed in migration
+    `0040_fix_processing_job_branch_scoping.sql` by adding the same explicit
+    `has_branch_access(tenant_id, branch_id)` check every other branch-scoped
+    integrity RPC already has; re-verified live afterward that the exact
+    failing scenario now correctly rejects, that legitimate (unscoped-owner
+    and same-branch) access still works, and that the capability gate and
+    duplicate-active-job protections were unaffected by the fix.
+  - Milestone 3 (Slab Output + Genealogy) onward: not started.
 - **Phase 3 — Stone Fabrication/Projects mode**: project-based job costing
   consuming slabs, invoiced via Phase 1's engine.
 - **Phase 4 — Tile Manufacturing mode**: recipes/BOM, batch production, shade/

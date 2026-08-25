@@ -1281,6 +1281,115 @@ export type Database = {
           },
         ]
       }
+      processing_jobs: {
+        Row: {
+          actual_slab_count: number | null
+          branch_id: string
+          cancelled_at: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          expected_slab_count: number | null
+          id: string
+          input_unit_id: string
+          job_number: string
+          machine: string | null
+          notes: string | null
+          operator_id: string | null
+          stage: Database["public"]["Enums"]["processing_stage"]
+          started_at: string | null
+          status: Database["public"]["Enums"]["processing_job_status"]
+          tenant_id: string
+          updated_at: string
+          warehouse_id: string
+        }
+        Insert: {
+          actual_slab_count?: number | null
+          branch_id: string
+          cancelled_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          expected_slab_count?: number | null
+          id?: string
+          input_unit_id: string
+          job_number: string
+          machine?: string | null
+          notes?: string | null
+          operator_id?: string | null
+          stage?: Database["public"]["Enums"]["processing_stage"]
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["processing_job_status"]
+          tenant_id: string
+          updated_at?: string
+          warehouse_id: string
+        }
+        Update: {
+          actual_slab_count?: number | null
+          branch_id?: string
+          cancelled_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          expected_slab_count?: number | null
+          id?: string
+          input_unit_id?: string
+          job_number?: string
+          machine?: string | null
+          notes?: string | null
+          operator_id?: string | null
+          stage?: Database["public"]["Enums"]["processing_stage"]
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["processing_job_status"]
+          tenant_id?: string
+          updated_at?: string
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "processing_jobs_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "processing_jobs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "processing_jobs_input_unit_id_fkey"
+            columns: ["input_unit_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "processing_jobs_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "processing_jobs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "processing_jobs_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_attribute_types: {
         Row: {
           code: string
@@ -3716,6 +3825,10 @@ export type Database = {
       }
     }
     Functions: {
+      cancel_processing_job: {
+        Args: { p_processing_job_id: string }
+        Returns: undefined
+      }
       cancel_stock_transfer: {
         Args: { p_stock_transfer_id: string }
         Returns: undefined
@@ -3768,6 +3881,10 @@ export type Database = {
         Args: { p_stock_transfer_id: string }
         Returns: undefined
       }
+      start_processing_job: {
+        Args: { p_processing_job_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       customer_type:
@@ -3780,9 +3897,11 @@ export type Database = {
       delivery_status: "draft" | "dispatched" | "delivered"
       goods_receipt_status: "draft" | "posted"
       inventory_tracking_mode: "simple" | "batch" | "unit"
-      inventory_unit_status: "in_stock"
+      inventory_unit_status: "in_stock" | "processing"
       inventory_unit_type: "block" | "slab" | "remnant"
       landed_cost_basis: "value" | "quantity"
+      processing_job_status: "draft" | "in_progress" | "completed" | "cancelled"
+      processing_stage: "cutting" | "squaring" | "polishing" | "other"
       purchase_invoice_status: "draft" | "posted" | "partially_paid" | "paid"
       purchase_order_status:
         | "draft"
@@ -3951,9 +4070,11 @@ export const Constants = {
       delivery_status: ["draft", "dispatched", "delivered"],
       goods_receipt_status: ["draft", "posted"],
       inventory_tracking_mode: ["simple", "batch", "unit"],
-      inventory_unit_status: ["in_stock"],
+      inventory_unit_status: ["in_stock", "processing"],
       inventory_unit_type: ["block", "slab", "remnant"],
       landed_cost_basis: ["value", "quantity"],
+      processing_job_status: ["draft", "in_progress", "completed", "cancelled"],
+      processing_stage: ["cutting", "squaring", "polishing", "other"],
       purchase_invoice_status: ["draft", "posted", "partially_paid", "paid"],
       purchase_order_status: [
         "draft",
