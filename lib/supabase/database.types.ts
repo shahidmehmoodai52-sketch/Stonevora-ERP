@@ -995,12 +995,14 @@ export type Database = {
           actual_length: number | null
           actual_thickness: number | null
           actual_width: number | null
+          area_uom_id: string | null
           cost: number | null
           created_at: string
           current_location_id: string | null
           dimension_uom_id: string | null
           goods_receipt_line_id: string | null
           id: string
+          output_processing_job_id: string | null
           parent_unit_id: string | null
           photo_url: string | null
           product_id: string
@@ -1014,6 +1016,7 @@ export type Database = {
           tenant_id: string
           unit_code: string
           unit_type: Database["public"]["Enums"]["inventory_unit_type"]
+          usable_area: number | null
           volume: number | null
           volume_uom_id: string | null
           weight: number | null
@@ -1024,12 +1027,14 @@ export type Database = {
           actual_length?: number | null
           actual_thickness?: number | null
           actual_width?: number | null
+          area_uom_id?: string | null
           cost?: number | null
           created_at?: string
           current_location_id?: string | null
           dimension_uom_id?: string | null
           goods_receipt_line_id?: string | null
           id?: string
+          output_processing_job_id?: string | null
           parent_unit_id?: string | null
           photo_url?: string | null
           product_id: string
@@ -1043,6 +1048,7 @@ export type Database = {
           tenant_id: string
           unit_code: string
           unit_type?: Database["public"]["Enums"]["inventory_unit_type"]
+          usable_area?: number | null
           volume?: number | null
           volume_uom_id?: string | null
           weight?: number | null
@@ -1053,12 +1059,14 @@ export type Database = {
           actual_length?: number | null
           actual_thickness?: number | null
           actual_width?: number | null
+          area_uom_id?: string | null
           cost?: number | null
           created_at?: string
           current_location_id?: string | null
           dimension_uom_id?: string | null
           goods_receipt_line_id?: string | null
           id?: string
+          output_processing_job_id?: string | null
           parent_unit_id?: string | null
           photo_url?: string | null
           product_id?: string
@@ -1072,12 +1080,20 @@ export type Database = {
           tenant_id?: string
           unit_code?: string
           unit_type?: Database["public"]["Enums"]["inventory_unit_type"]
+          usable_area?: number | null
           volume?: number | null
           volume_uom_id?: string | null
           weight?: number | null
           weight_uom_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "inventory_units_area_uom_id_fkey"
+            columns: ["area_uom_id"]
+            isOneToOne: false
+            referencedRelation: "uom"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "inventory_units_current_location_id_fkey"
             columns: ["current_location_id"]
@@ -1097,6 +1113,13 @@ export type Database = {
             columns: ["goods_receipt_line_id"]
             isOneToOne: false
             referencedRelation: "goods_receipt_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_units_output_processing_job_id_fkey"
+            columns: ["output_processing_job_id"]
+            isOneToOne: false
+            referencedRelation: "processing_jobs"
             referencedColumns: ["id"]
           },
           {
@@ -3833,6 +3856,10 @@ export type Database = {
         Args: { p_stock_transfer_id: string }
         Returns: undefined
       }
+      complete_processing_job: {
+        Args: { p_processing_job_id: string; p_slabs: Json }
+        Returns: string[]
+      }
       confirm_sales_order: {
         Args: { p_sales_order_id: string }
         Returns: undefined
@@ -3897,7 +3924,7 @@ export type Database = {
       delivery_status: "draft" | "dispatched" | "delivered"
       goods_receipt_status: "draft" | "posted"
       inventory_tracking_mode: "simple" | "batch" | "unit"
-      inventory_unit_status: "in_stock" | "processing"
+      inventory_unit_status: "in_stock" | "processing" | "consumed"
       inventory_unit_type: "block" | "slab" | "remnant"
       landed_cost_basis: "value" | "quantity"
       processing_job_status: "draft" | "in_progress" | "completed" | "cancelled"
@@ -4070,7 +4097,7 @@ export const Constants = {
       delivery_status: ["draft", "dispatched", "delivered"],
       goods_receipt_status: ["draft", "posted"],
       inventory_tracking_mode: ["simple", "batch", "unit"],
-      inventory_unit_status: ["in_stock", "processing"],
+      inventory_unit_status: ["in_stock", "processing", "consumed"],
       inventory_unit_type: ["block", "slab", "remnant"],
       landed_cost_basis: ["value", "quantity"],
       processing_job_status: ["draft", "in_progress", "completed", "cancelled"],

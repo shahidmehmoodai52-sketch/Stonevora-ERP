@@ -118,7 +118,43 @@ verified before the next begins.
     failing scenario now correctly rejects, that legitimate (unscoped-owner
     and same-branch) access still works, and that the capability gate and
     duplicate-active-job protections were unaffected by the fix.
-  - Milestone 3 (Slab Output + Genealogy) onward: not started.
+  - **Milestone 3 — Slab Output + Genealogy** ✅: `complete_processing_job`
+    turns an `in_progress` job's block into one or more slab `inventory_units`
+    rows, each with `parent_unit_id` set to the input block — the genealogy
+    link the spec required — and `output_processing_job_id` tracing which job
+    produced it. Slab area follows the same researched pattern as Milestone
+    1's volume: billed area for natural stone is conventionally the bounding
+    rectangle (length × width), not a hand-measured polygon, since that's what
+    cutting equipment and invoices actually record; length/width are
+    normalized to CM via `convert_uom_quantity` (the existing UOM engine) and
+    then divided by an exact physical constant into the requested unit (SQFT:
+    ÷929.0304 cm²; SQM: ÷10000 cm² — math, not a business rule), independently
+    hand-verified for both units and for decimal dimensions. A separate
+    `usable_area` column (validated 0 ≤ usable ≤ gross) captures cutouts/
+    visible damage noticed at cutting time — deliberately an operator-entered
+    value, never a derived formula, since arbitrary cutout shapes can't be
+    computed from length/width alone. Completing a job marks the block
+    `'consumed'` (a new status — the same "input must not remain incorrectly
+    available" rule Milestone 2 applied to `'processing'`) and the job
+    `'completed'`, recording `actual_slab_count`. Every slab lands `in_stock`
+    immediately — QC-gated sellability is explicitly Milestone 5's concern,
+    not invented early — and cost roll-up is deliberately left for Milestone
+    6 rather than guessing a cost-splitting formula now. Applying the
+    Milestone 2 branch-scoping lesson from the start this time,
+    `complete_processing_job` was built with `has_branch_access` checked from
+    its first version — live-verified that a branch-B-scoped user is
+    correctly rejected, no bug this round. Also closed a real pre-existing
+    gap while touching this table: `inventory_units` never had the generic
+    audit trigger attached (Phase 0 never wired it up) — added it here,
+    purely additively, satisfying the "all movements auditable" requirement
+    for the new block-consumed/slabs-created movements this milestone writes.
+    Live-verified: full slab creation (genealogy, area math in both SQFT and
+    SQM, decimal dimensions), usable-area-exceeds-gross rejection, missing-
+    field rejection, empty-slabs-array rejection, wrong-area-unit rejection,
+    capability gate, branch-scoping rejection, and a Phase-1 regression
+    (`post_goods_receipt` block intake still works unmodified with the new
+    columns/trigger present).
+  - Milestone 4 (Yield + Waste + Remnants) onward: not started.
 - **Phase 3 — Stone Fabrication/Projects mode**: project-based job costing
   consuming slabs, invoiced via Phase 1's engine.
 - **Phase 4 — Tile Manufacturing mode**: recipes/BOM, batch production, shade/
