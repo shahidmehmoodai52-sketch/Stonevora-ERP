@@ -58,9 +58,34 @@ verified before the next begins.
   `inventory_stock`/`inventory_batches` (no `branch_id` column exists there;
   a bigger schema change than this task warranted), sales-side multi-currency
   completion, localization/IP-detection.
-- **Phase 2 — Block/Slab Factory mode**: raw block intake, cutting/processing,
-  graded slab output with yield tracking and cost roll-up. Gated behind the
-  `block_slab_factory` capability so it never surfaces for tenants that don't use it.
+- **Phase 2 — Block/Slab Factory mode** (in progress, milestone by milestone;
+  gated behind the `block_slab_factory` capability so it never surfaces for
+  tenants that don't use it):
+  - **Milestone 1 — Raw Block Intake** ✅: reuses the existing Supplier → PO →
+    GRN workflow end to end (no separate intake pipeline) and the existing
+    `inventory_units` table (its `unit_type`/`parent_unit_id`/genealogy/QR/cost
+    columns from Phase 0 were built for exactly this). A unit-tracked GRN line
+    must represent exactly one block (matching how quarry-block invoices are
+    conventionally itemized per block, since size/grade vary block to block —
+    this sidesteps inventing an equal-division cost split across several
+    physically distinct blocks on one line). `post_goods_receipt` now creates
+    a real `inventory_units` row per block: dimensions, weight, quarry source,
+    supplier and GRN-line traceability, and a volume computed via exact
+    physical unit-conversion constants (cm³→M3/CFT — math, not a business
+    rule) into the tenant's chosen unit. The landed cost already computed by
+    the existing per-line freight/duty/handling allocation becomes the
+    block's `cost`; the original purchase `unit_cost` on the GRN line is left
+    untouched (historical cost preserved, never overwritten). Enforced at the
+    database layer, not just hidden in the UI: `has_capability()` rejects
+    block intake outright if `block_slab_factory` isn't enabled for the
+    tenant. Added the dimension/volume UOMs the catalog was missing (CM,
+    INCH, MM, CFT, BLOCK) with exact conversions. `inventory_units.status`
+    converted from free text to a real enum on its first-ever write.
+    Live-verified: capability gate, quantity≠1 rejection, missing-field
+    rejection, volume math (both CFT and M3, independently hand-verified),
+    cost preservation, tenant isolation, and the full Phase 1 regression flow
+    — zero Phase 0/Phase 1 files modified.
+  - Milestone 2 (Processing/Cutting) onward: not started.
 - **Phase 3 — Stone Fabrication/Projects mode**: project-based job costing
   consuming slabs, invoiced via Phase 1's engine.
 - **Phase 4 — Tile Manufacturing mode**: recipes/BOM, batch production, shade/

@@ -580,6 +580,10 @@ export type Database = {
           batch_number: string | null
           caliber_code: string | null
           created_at: string
+          dimension_height: number | null
+          dimension_length: number | null
+          dimension_uom_id: string | null
+          dimension_width: number | null
           goods_receipt_id: string
           id: string
           location_id: string | null
@@ -587,11 +591,17 @@ export type Database = {
           product_id: string
           purchase_order_line_id: string
           quantity: number
+          quarry_source: string | null
           shade_code: string | null
           tenant_id: string
           total_unit_cost: number | null
+          unit_code: string | null
           unit_cost: number
+          unit_quality_grade: string | null
+          unit_weight: number | null
+          unit_weight_uom_id: string | null
           uom_id: string
+          volume_uom_id: string | null
         }
         Insert: {
           allocated_landed_cost?: number
@@ -599,6 +609,10 @@ export type Database = {
           batch_number?: string | null
           caliber_code?: string | null
           created_at?: string
+          dimension_height?: number | null
+          dimension_length?: number | null
+          dimension_uom_id?: string | null
+          dimension_width?: number | null
           goods_receipt_id: string
           id?: string
           location_id?: string | null
@@ -606,11 +620,17 @@ export type Database = {
           product_id: string
           purchase_order_line_id: string
           quantity: number
+          quarry_source?: string | null
           shade_code?: string | null
           tenant_id: string
           total_unit_cost?: number | null
+          unit_code?: string | null
           unit_cost: number
+          unit_quality_grade?: string | null
+          unit_weight?: number | null
+          unit_weight_uom_id?: string | null
           uom_id: string
+          volume_uom_id?: string | null
         }
         Update: {
           allocated_landed_cost?: number
@@ -618,6 +638,10 @@ export type Database = {
           batch_number?: string | null
           caliber_code?: string | null
           created_at?: string
+          dimension_height?: number | null
+          dimension_length?: number | null
+          dimension_uom_id?: string | null
+          dimension_width?: number | null
           goods_receipt_id?: string
           id?: string
           location_id?: string | null
@@ -625,13 +649,26 @@ export type Database = {
           product_id?: string
           purchase_order_line_id?: string
           quantity?: number
+          quarry_source?: string | null
           shade_code?: string | null
           tenant_id?: string
           total_unit_cost?: number | null
+          unit_code?: string | null
           unit_cost?: number
+          unit_quality_grade?: string | null
+          unit_weight?: number | null
+          unit_weight_uom_id?: string | null
           uom_id?: string
+          volume_uom_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "goods_receipt_lines_dimension_uom_id_fkey"
+            columns: ["dimension_uom_id"]
+            isOneToOne: false
+            referencedRelation: "uom"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "goods_receipt_lines_goods_receipt_id_fkey"
             columns: ["goods_receipt_id"]
@@ -675,8 +712,22 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "goods_receipt_lines_unit_weight_uom_id_fkey"
+            columns: ["unit_weight_uom_id"]
+            isOneToOne: false
+            referencedRelation: "uom"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "goods_receipt_lines_uom_id_fkey"
             columns: ["uom_id"]
+            isOneToOne: false
+            referencedRelation: "uom"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goods_receipt_lines_volume_uom_id_fkey"
+            columns: ["volume_uom_id"]
             isOneToOne: false
             referencedRelation: "uom"
             referencedColumns: ["id"]
@@ -947,18 +998,26 @@ export type Database = {
           cost: number | null
           created_at: string
           current_location_id: string | null
+          dimension_uom_id: string | null
+          goods_receipt_line_id: string | null
           id: string
           parent_unit_id: string | null
           photo_url: string | null
           product_id: string
           qr_code_value: string | null
           quality_grade: string | null
+          quarry_source: string | null
           selling_price: number | null
           sequence_number: number | null
-          status: string
+          status: Database["public"]["Enums"]["inventory_unit_status"]
+          supplier_id: string | null
           tenant_id: string
           unit_code: string
           unit_type: Database["public"]["Enums"]["inventory_unit_type"]
+          volume: number | null
+          volume_uom_id: string | null
+          weight: number | null
+          weight_uom_id: string | null
         }
         Insert: {
           actual_area?: number | null
@@ -968,18 +1027,26 @@ export type Database = {
           cost?: number | null
           created_at?: string
           current_location_id?: string | null
+          dimension_uom_id?: string | null
+          goods_receipt_line_id?: string | null
           id?: string
           parent_unit_id?: string | null
           photo_url?: string | null
           product_id: string
           qr_code_value?: string | null
           quality_grade?: string | null
+          quarry_source?: string | null
           selling_price?: number | null
           sequence_number?: number | null
-          status?: string
+          status?: Database["public"]["Enums"]["inventory_unit_status"]
+          supplier_id?: string | null
           tenant_id: string
           unit_code: string
           unit_type?: Database["public"]["Enums"]["inventory_unit_type"]
+          volume?: number | null
+          volume_uom_id?: string | null
+          weight?: number | null
+          weight_uom_id?: string | null
         }
         Update: {
           actual_area?: number | null
@@ -989,18 +1056,26 @@ export type Database = {
           cost?: number | null
           created_at?: string
           current_location_id?: string | null
+          dimension_uom_id?: string | null
+          goods_receipt_line_id?: string | null
           id?: string
           parent_unit_id?: string | null
           photo_url?: string | null
           product_id?: string
           qr_code_value?: string | null
           quality_grade?: string | null
+          quarry_source?: string | null
           selling_price?: number | null
           sequence_number?: number | null
-          status?: string
+          status?: Database["public"]["Enums"]["inventory_unit_status"]
+          supplier_id?: string | null
           tenant_id?: string
           unit_code?: string
           unit_type?: Database["public"]["Enums"]["inventory_unit_type"]
+          volume?: number | null
+          volume_uom_id?: string | null
+          weight?: number | null
+          weight_uom_id?: string | null
         }
         Relationships: [
           {
@@ -1008,6 +1083,20 @@ export type Database = {
             columns: ["current_location_id"]
             isOneToOne: false
             referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_units_dimension_uom_id_fkey"
+            columns: ["dimension_uom_id"]
+            isOneToOne: false
+            referencedRelation: "uom"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_units_goods_receipt_line_id_fkey"
+            columns: ["goods_receipt_line_id"]
+            isOneToOne: false
+            referencedRelation: "goods_receipt_lines"
             referencedColumns: ["id"]
           },
           {
@@ -1032,10 +1121,31 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "inventory_units_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "inventory_units_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_units_volume_uom_id_fkey"
+            columns: ["volume_uom_id"]
+            isOneToOne: false
+            referencedRelation: "uom"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_units_weight_uom_id_fkey"
+            columns: ["weight_uom_id"]
+            isOneToOne: false
+            referencedRelation: "uom"
             referencedColumns: ["id"]
           },
         ]
@@ -3637,6 +3747,10 @@ export type Database = {
         Args: { check_branch_id: string; check_tenant_id: string }
         Returns: boolean
       }
+      has_capability: {
+        Args: { check_capability_code: string; check_tenant_id: string }
+        Returns: boolean
+      }
       has_permission: {
         Args: { check_tenant_id: string; p_action: string; p_resource: string }
         Returns: boolean
@@ -3666,6 +3780,7 @@ export type Database = {
       delivery_status: "draft" | "dispatched" | "delivered"
       goods_receipt_status: "draft" | "posted"
       inventory_tracking_mode: "simple" | "batch" | "unit"
+      inventory_unit_status: "in_stock"
       inventory_unit_type: "block" | "slab" | "remnant"
       landed_cost_basis: "value" | "quantity"
       purchase_invoice_status: "draft" | "posted" | "partially_paid" | "paid"
@@ -3836,6 +3951,7 @@ export const Constants = {
       delivery_status: ["draft", "dispatched", "delivered"],
       goods_receipt_status: ["draft", "posted"],
       inventory_tracking_mode: ["simple", "batch", "unit"],
+      inventory_unit_status: ["in_stock"],
       inventory_unit_type: ["block", "slab", "remnant"],
       landed_cost_basis: ["value", "quantity"],
       purchase_invoice_status: ["draft", "posted", "partially_paid", "paid"],
