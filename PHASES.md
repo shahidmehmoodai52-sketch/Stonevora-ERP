@@ -30,6 +30,34 @@ verified before the next begins.
   every other capability is opt-in metadata via Settings → Business capabilities,
   and is marked "module UI not yet built" until its phase ships. This is the
   prerequisite the next phases build on, not a phase in itself.
+- **Factory-Ready Foundation** ✅: four prerequisite fixes identified by
+  `docs/PRE_FACTORY_ARCHITECTURE_AUDIT.md`, implemented and live-verified before
+  any Block/Slab code:
+  1. **UOM conversion engine wired in** — `convert_uom_quantity()` resolves a
+     product-specific → tenant → global conversion factor and is now applied
+     inside `post_goods_receipt`/`confirm_sales_order`/`dispatch_delivery`
+     before any quantity touches `qty_on_hand`/`reserved_qty`. Fixes a real,
+     live defect: receiving/selling in a non-base UOM (e.g. BOX against a
+     PCS-tracked product) previously corrupted stock quantities silently.
+     `base_quantity` columns on the affected line tables preserve the entered
+     UOM alongside the converted amount.
+  2. **Branch-level RLS enforcement** — `has_branch_access()` makes
+     `user_roles.branch_id` (present since Phase 0 but never enforced) an
+     actual database-layer restriction on every branch-scoped table
+     (purchase/sales/GRN/delivery/invoice/payment headers+lines, warehouses).
+     Backward compatible: a role with no branch scope keeps full access.
+  3. **Category/attribute templates** — `category_attribute_templates` +
+     `product_numeric_attributes`, additive tables reusing the existing
+     lookup-value pattern; the `products` table itself was not rewritten.
+  4. **Stock transfers** — `stock_transfers`/`stock_transfer_lines` with a
+     draft → requested → in_transit → received/cancelled state machine,
+     atomic `ship_stock_transfer`/`receive_stock_transfer`/
+     `cancel_stock_transfer` RPCs, partial receipt, batch/lot/shade/caliber
+     genealogy preserved across a transfer, and branch-aware RLS.
+  Deferred, documented, not silently dropped: true per-row branch scoping of
+  `inventory_stock`/`inventory_batches` (no `branch_id` column exists there;
+  a bigger schema change than this task warranted), sales-side multi-currency
+  completion, localization/IP-detection.
 - **Phase 2 — Block/Slab Factory mode**: raw block intake, cutting/processing,
   graded slab output with yield tracking and cost roll-up. Gated behind the
   `block_slab_factory` capability so it never surfaces for tenants that don't use it.

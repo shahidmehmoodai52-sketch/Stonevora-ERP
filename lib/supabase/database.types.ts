@@ -132,6 +132,55 @@ export type Database = {
         }
         Relationships: []
       }
+      category_attribute_templates: {
+        Row: {
+          attribute_type_id: string
+          category_id: string
+          id: string
+          is_required: boolean
+          sort_order: number
+          tenant_id: string
+        }
+        Insert: {
+          attribute_type_id: string
+          category_id: string
+          id?: string
+          is_required?: boolean
+          sort_order?: number
+          tenant_id: string
+        }
+        Update: {
+          attribute_type_id?: string
+          category_id?: string
+          id?: string
+          is_required?: boolean
+          sort_order?: number
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "category_attribute_templates_attribute_type_id_fkey"
+            columns: ["attribute_type_id"]
+            isOneToOne: false
+            referencedRelation: "product_attribute_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "category_attribute_templates_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "product_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "category_attribute_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       countries: {
         Row: {
           id: string
@@ -419,6 +468,7 @@ export type Database = {
       }
       delivery_lines: {
         Row: {
+          base_quantity: number | null
           created_at: string
           delivery_id: string
           id: string
@@ -429,6 +479,7 @@ export type Database = {
           unit_cost: number | null
         }
         Insert: {
+          base_quantity?: number | null
           created_at?: string
           delivery_id: string
           id?: string
@@ -439,6 +490,7 @@ export type Database = {
           unit_cost?: number | null
         }
         Update: {
+          base_quantity?: number | null
           created_at?: string
           delivery_id?: string
           id?: string
@@ -524,6 +576,7 @@ export type Database = {
       goods_receipt_lines: {
         Row: {
           allocated_landed_cost: number
+          base_quantity: number | null
           batch_number: string | null
           caliber_code: string | null
           created_at: string
@@ -542,6 +595,7 @@ export type Database = {
         }
         Insert: {
           allocated_landed_cost?: number
+          base_quantity?: number | null
           batch_number?: string | null
           caliber_code?: string | null
           created_at?: string
@@ -560,6 +614,7 @@ export type Database = {
         }
         Update: {
           allocated_landed_cost?: number
+          base_quantity?: number | null
           batch_number?: string | null
           caliber_code?: string | null
           created_at?: string
@@ -1286,6 +1341,69 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_numeric_attributes: {
+        Row: {
+          attribute_type_id: string
+          id: string
+          product_id: string
+          tenant_id: string
+          uom_id: string | null
+          value: number
+        }
+        Insert: {
+          attribute_type_id: string
+          id?: string
+          product_id: string
+          tenant_id: string
+          uom_id?: string | null
+          value: number
+        }
+        Update: {
+          attribute_type_id?: string
+          id?: string
+          product_id?: string
+          tenant_id?: string
+          uom_id?: string | null
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_numeric_attributes_attribute_type_id_fkey"
+            columns: ["attribute_type_id"]
+            isOneToOne: false
+            referencedRelation: "product_attribute_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_numeric_attributes_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_numeric_attributes_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_numeric_attributes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_numeric_attributes_uom_id_fkey"
+            columns: ["uom_id"]
+            isOneToOne: false
+            referencedRelation: "uom"
             referencedColumns: ["id"]
           },
         ]
@@ -2085,6 +2203,7 @@ export type Database = {
       }
       sales_order_lines: {
         Row: {
+          base_quantity: number | null
           created_at: string
           delivered_quantity: number
           id: string
@@ -2097,6 +2216,7 @@ export type Database = {
           uom_id: string
         }
         Insert: {
+          base_quantity?: number | null
           created_at?: string
           delivered_quantity?: number
           id?: string
@@ -2109,6 +2229,7 @@ export type Database = {
           uom_id: string
         }
         Update: {
+          base_quantity?: number | null
           created_at?: string
           delivered_quantity?: number
           id?: string
@@ -2255,6 +2376,218 @@ export type Database = {
             columns: ["warehouse_id"]
             isOneToOne: false
             referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_transfer_lines: {
+        Row: {
+          base_quantity: number | null
+          created_at: string
+          destination_batch_id: string | null
+          destination_location_id: string | null
+          id: string
+          product_id: string
+          quantity: number
+          received_quantity: number
+          source_batch_id: string | null
+          source_location_id: string | null
+          stock_transfer_id: string
+          tenant_id: string
+          uom_id: string
+        }
+        Insert: {
+          base_quantity?: number | null
+          created_at?: string
+          destination_batch_id?: string | null
+          destination_location_id?: string | null
+          id?: string
+          product_id: string
+          quantity: number
+          received_quantity?: number
+          source_batch_id?: string | null
+          source_location_id?: string | null
+          stock_transfer_id: string
+          tenant_id: string
+          uom_id: string
+        }
+        Update: {
+          base_quantity?: number | null
+          created_at?: string
+          destination_batch_id?: string | null
+          destination_location_id?: string | null
+          id?: string
+          product_id?: string
+          quantity?: number
+          received_quantity?: number
+          source_batch_id?: string | null
+          source_location_id?: string | null
+          stock_transfer_id?: string
+          tenant_id?: string
+          uom_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_transfer_lines_destination_batch_id_fkey"
+            columns: ["destination_batch_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfer_lines_destination_location_id_fkey"
+            columns: ["destination_location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfer_lines_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfer_lines_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfer_lines_source_batch_id_fkey"
+            columns: ["source_batch_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfer_lines_source_location_id_fkey"
+            columns: ["source_location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfer_lines_stock_transfer_id_fkey"
+            columns: ["stock_transfer_id"]
+            isOneToOne: false
+            referencedRelation: "stock_transfers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfer_lines_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfer_lines_uom_id_fkey"
+            columns: ["uom_id"]
+            isOneToOne: false
+            referencedRelation: "uom"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_transfers: {
+        Row: {
+          cancelled_at: string | null
+          created_at: string
+          created_by: string | null
+          destination_branch_id: string
+          destination_warehouse_id: string
+          id: string
+          notes: string | null
+          received_at: string | null
+          requested_at: string | null
+          shipped_at: string | null
+          source_branch_id: string
+          source_warehouse_id: string
+          status: Database["public"]["Enums"]["stock_transfer_status"]
+          tenant_id: string
+          transfer_number: string
+          updated_at: string
+        }
+        Insert: {
+          cancelled_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          destination_branch_id: string
+          destination_warehouse_id: string
+          id?: string
+          notes?: string | null
+          received_at?: string | null
+          requested_at?: string | null
+          shipped_at?: string | null
+          source_branch_id: string
+          source_warehouse_id: string
+          status?: Database["public"]["Enums"]["stock_transfer_status"]
+          tenant_id: string
+          transfer_number: string
+          updated_at?: string
+        }
+        Update: {
+          cancelled_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          destination_branch_id?: string
+          destination_warehouse_id?: string
+          id?: string
+          notes?: string | null
+          received_at?: string | null
+          requested_at?: string | null
+          shipped_at?: string | null
+          source_branch_id?: string
+          source_warehouse_id?: string
+          status?: Database["public"]["Enums"]["stock_transfer_status"]
+          tenant_id?: string
+          transfer_number?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_transfers_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfers_destination_branch_id_fkey"
+            columns: ["destination_branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfers_destination_warehouse_id_fkey"
+            columns: ["destination_warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfers_source_branch_id_fkey"
+            columns: ["source_branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfers_source_warehouse_id_fkey"
+            columns: ["source_warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -3273,9 +3606,23 @@ export type Database = {
       }
     }
     Functions: {
+      cancel_stock_transfer: {
+        Args: { p_stock_transfer_id: string }
+        Returns: undefined
+      }
       confirm_sales_order: {
         Args: { p_sales_order_id: string }
         Returns: undefined
+      }
+      convert_uom_quantity: {
+        Args: {
+          p_from_uom_id: string
+          p_product_id: string
+          p_quantity: number
+          p_tenant_id: string
+          p_to_uom_id: string
+        }
+        Returns: number
       }
       create_tenant_for_user: {
         Args: { p_tenant_name: string; p_tenant_slug: string }
@@ -3286,6 +3633,10 @@ export type Database = {
         Args: { p_delivery_id: string; p_invoice_number: string }
         Returns: string
       }
+      has_branch_access: {
+        Args: { check_branch_id: string; check_tenant_id: string }
+        Returns: boolean
+      }
       has_permission: {
         Args: { check_tenant_id: string; p_action: string; p_resource: string }
         Returns: boolean
@@ -3293,6 +3644,14 @@ export type Database = {
       is_tenant_member: { Args: { check_tenant_id: string }; Returns: boolean }
       post_goods_receipt: {
         Args: { p_goods_receipt_id: string }
+        Returns: undefined
+      }
+      receive_stock_transfer: {
+        Args: { p_line_quantities?: Json; p_stock_transfer_id: string }
+        Returns: undefined
+      }
+      ship_stock_transfer: {
+        Args: { p_stock_transfer_id: string }
         Returns: undefined
       }
     }
@@ -3328,6 +3687,12 @@ export type Database = {
         | "partially_delivered"
         | "delivered"
         | "invoiced"
+        | "cancelled"
+      stock_transfer_status:
+        | "draft"
+        | "requested"
+        | "in_transit"
+        | "received"
         | "cancelled"
       storage_location_type: "zone" | "row" | "rack" | "position"
       tenant_status: "trial" | "active" | "suspended" | "cancelled"
@@ -3494,6 +3859,13 @@ export const Constants = {
         "partially_delivered",
         "delivered",
         "invoiced",
+        "cancelled",
+      ],
+      stock_transfer_status: [
+        "draft",
+        "requested",
+        "in_transit",
+        "received",
         "cancelled",
       ],
       storage_location_type: ["zone", "row", "rack", "position"],
