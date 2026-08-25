@@ -201,7 +201,50 @@ verified before the next begins.
     and its empty-array test was rewritten from "must reject" to "must
     succeed as 100% waste," reflecting this milestone's intentionally
     relaxed rule.
-  - Milestone 5 (QC) onward: not started.
+  - **Milestone 5 — QC** ✅: closes the gap Milestones 3 and 4 both
+    deliberately left open ("QC-gated sellability is explicitly Milestone
+    5's concern, not invented early") — newly produced slabs/remnants now
+    land `'pending_qc'`, not `'in_stock'`, and only a passed inspection
+    moves them to `'in_stock'`; a rejected one moves to `'rejected'`,
+    structurally excluded from `'in_stock'` for good. Real QC workflow
+    researched: after cutting, every slab/remnant is visually/physically
+    inspected for cracks, pits, veining, chips, color consistency before it
+    can be sold — the operator's cutting-time grade is provisional, and QC
+    either confirms it or overrides it. New `qc_inspections` table
+    (append-only — no update/delete policy, since correcting a mistaken
+    inspection is a fresh inspection, not a rewrite of QC history) and a new
+    `record_qc_inspection` RPC: locks the unit, requires it be a slab or
+    remnant currently `pending_qc` (deliberately one inspection per unit —
+    no re-inspection/appeal workflow was requested), resolves branch access
+    via the unit's own originating job (`inventory_units` carries no
+    `branch_id` directly; `output_processing_job_id` always does), and on
+    pass lets a QC-confirmed grade override the cutting-time grade while on
+    reject preserves the original grade untouched. QC reuses the existing
+    `production` resource's `approve` action rather than inventing a 12th
+    permission action outside Phase 0's standard 11-action catalog — which
+    meant `qc_manager` (created in Milestone 2 with only `production.view`,
+    since there was nothing to approve yet) needed `approve` added to
+    actually perform QC; fixed via the now-familiar `create_tenant_for_user`
+    `CREATE OR REPLACE`, with every other role's grants reproduced as-is.
+    Blocks are deliberately not QC'd (the spec's wording is scoped to
+    slabs/remnants — a block's quality is judged by what it yields, not
+    inspected as a unit itself); sales-side consumption of unit-tracked
+    products still doesn't exist (Phase 1's `confirm_sales_order` already
+    explicitly refuses unit-tracked products outright — "not yet reservable
+    in Phase 1" — a pre-existing, documented gap this milestone doesn't
+    need to touch), so this milestone's contribution is making sure the
+    status-based gate any future sales integration would check is already
+    correct. Live-verified: default status of freshly completed output is
+    now `pending_qc`; pass path (status → `in_stock`, grade override
+    applied, inspection record correct); reject path (status → `rejected`,
+    original grade preserved); re-inspection of an already-resolved unit
+    rejected; QC-ing a block rejected; the `qc_manager` permission fix
+    verified both ways — `production_operator` (no `approve`) correctly
+    rejected, `qc_manager` (now has `approve`) correctly succeeds; branch
+    scoping and the capability gate re-confirmed. Milestone 3's test file
+    updated for the new `pending_qc` default (its one assertion that
+    expected immediate `in_stock` now expects `pending_qc`).
+  - Milestone 6 (Cost Roll-up) onward: not started.
 - **Phase 3 — Stone Fabrication/Projects mode**: project-based job costing
   consuming slabs, invoiced via Phase 1's engine.
 - **Phase 4 — Tile Manufacturing mode**: recipes/BOM, batch production, shade/

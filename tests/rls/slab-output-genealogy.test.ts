@@ -121,7 +121,10 @@ describe.skipIf(!hasServiceRoleKey)("Factory Milestone 3: Slab Output + Genealog
     expect(slabs![0].parent_unit_id).toBe(blockId);
     expect(slabs![0].output_processing_job_id).toBe(jobId);
     expect(slabs![0].sequence_number).toBe(1);
-    expect(slabs![0].status).toBe("in_stock");
+    // Milestone 5 (QC) changed the post-completion default: a freshly
+    // produced slab/remnant now lands 'pending_qc', not 'in_stock', until a
+    // QC inspection passes it.
+    expect(slabs![0].status).toBe("pending_qc");
     // usable_area defaults to the gross area when not supplied.
     expect(Number(slabs![0].usable_area)).toBeCloseTo(Number(slabs![0].actual_area), 4);
 

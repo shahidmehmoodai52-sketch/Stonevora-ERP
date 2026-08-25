@@ -2178,6 +2178,74 @@ export type Database = {
           },
         ]
       }
+      qc_inspections: {
+        Row: {
+          branch_id: string
+          confirmed_grade: string | null
+          defects: string | null
+          id: string
+          inspected_at: string
+          inspected_by: string | null
+          inventory_unit_id: string
+          notes: string | null
+          outcome: Database["public"]["Enums"]["qc_outcome"]
+          tenant_id: string
+        }
+        Insert: {
+          branch_id: string
+          confirmed_grade?: string | null
+          defects?: string | null
+          id?: string
+          inspected_at?: string
+          inspected_by?: string | null
+          inventory_unit_id: string
+          notes?: string | null
+          outcome: Database["public"]["Enums"]["qc_outcome"]
+          tenant_id: string
+        }
+        Update: {
+          branch_id?: string
+          confirmed_grade?: string | null
+          defects?: string | null
+          id?: string
+          inspected_at?: string
+          inspected_by?: string | null
+          inventory_unit_id?: string
+          notes?: string | null
+          outcome?: Database["public"]["Enums"]["qc_outcome"]
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qc_inspections_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qc_inspections_inspected_by_fkey"
+            columns: ["inspected_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qc_inspections_inventory_unit_id_fkey"
+            columns: ["inventory_unit_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qc_inspections_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       role_permissions: {
         Row: {
           permission_id: string
@@ -3923,6 +3991,16 @@ export type Database = {
         Args: { p_line_quantities?: Json; p_stock_transfer_id: string }
         Returns: undefined
       }
+      record_qc_inspection: {
+        Args: {
+          p_confirmed_grade?: string
+          p_defects?: string
+          p_inventory_unit_id: string
+          p_notes?: string
+          p_outcome: Database["public"]["Enums"]["qc_outcome"]
+        }
+        Returns: string
+      }
       ship_stock_transfer: {
         Args: { p_stock_transfer_id: string }
         Returns: undefined
@@ -3943,7 +4021,12 @@ export type Database = {
       delivery_status: "draft" | "dispatched" | "delivered"
       goods_receipt_status: "draft" | "posted"
       inventory_tracking_mode: "simple" | "batch" | "unit"
-      inventory_unit_status: "in_stock" | "processing" | "consumed"
+      inventory_unit_status:
+        | "in_stock"
+        | "processing"
+        | "consumed"
+        | "pending_qc"
+        | "rejected"
       inventory_unit_type: "block" | "slab" | "remnant"
       landed_cost_basis: "value" | "quantity"
       processing_job_status: "draft" | "in_progress" | "completed" | "cancelled"
@@ -3955,6 +4038,7 @@ export type Database = {
         | "partially_received"
         | "received"
         | "cancelled"
+      qc_outcome: "passed" | "rejected"
       sales_invoice_status:
         | "draft"
         | "posted"
@@ -4116,7 +4200,13 @@ export const Constants = {
       delivery_status: ["draft", "dispatched", "delivered"],
       goods_receipt_status: ["draft", "posted"],
       inventory_tracking_mode: ["simple", "batch", "unit"],
-      inventory_unit_status: ["in_stock", "processing", "consumed"],
+      inventory_unit_status: [
+        "in_stock",
+        "processing",
+        "consumed",
+        "pending_qc",
+        "rejected",
+      ],
       inventory_unit_type: ["block", "slab", "remnant"],
       landed_cost_basis: ["value", "quantity"],
       processing_job_status: ["draft", "in_progress", "completed", "cancelled"],
@@ -4129,6 +4219,7 @@ export const Constants = {
         "received",
         "cancelled",
       ],
+      qc_outcome: ["passed", "rejected"],
       sales_invoice_status: [
         "draft",
         "posted",
