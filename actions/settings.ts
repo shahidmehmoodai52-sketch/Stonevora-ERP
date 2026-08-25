@@ -41,6 +41,35 @@ export async function updateTenantSettingsAction(formData: FormData): Promise<Ac
   return { success: true };
 }
 
+export async function setTenantCapabilityAction(
+  capabilityId: string,
+  enable: boolean
+): Promise<ActionResult> {
+  const tenant = await requireActiveTenant();
+  await requirePermission(tenant.tenantId, "company_settings", "edit");
+
+  const supabase = await createClient();
+  if (enable) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const { error } = await supabase
+      .from("tenant_capabilities")
+      .insert({ tenant_id: tenant.tenantId, capability_id: capabilityId, enabled_by: user?.id });
+    if (error) return { error: error.message };
+  } else {
+    const { error } = await supabase
+      .from("tenant_capabilities")
+      .delete()
+      .eq("tenant_id", tenant.tenantId)
+      .eq("capability_id", capabilityId);
+    if (error) return { error: error.message };
+  }
+
+  revalidatePath("/settings/capabilities");
+  return { success: true };
+}
+
 export async function createBranchAction(formData: FormData): Promise<ActionResult> {
   const tenant = await requireActiveTenant();
   await requirePermission(tenant.tenantId, "company_settings", "create");

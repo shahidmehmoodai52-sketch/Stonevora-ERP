@@ -108,6 +108,30 @@ export type Database = {
           },
         ]
       }
+      business_capabilities: {
+        Row: {
+          code: string
+          description: string
+          id: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          code: string
+          description: string
+          id?: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          code?: string
+          description?: string
+          id?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       countries: {
         Row: {
           id: string
@@ -2509,6 +2533,52 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "tax_types_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_capabilities: {
+        Row: {
+          capability_id: string
+          enabled_at: string
+          enabled_by: string | null
+          id: string
+          tenant_id: string
+        }
+        Insert: {
+          capability_id: string
+          enabled_at?: string
+          enabled_by?: string | null
+          id?: string
+          tenant_id: string
+        }
+        Update: {
+          capability_id?: string
+          enabled_at?: string
+          enabled_by?: string | null
+          id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_capabilities_capability_id_fkey"
+            columns: ["capability_id"]
+            isOneToOne: false
+            referencedRelation: "business_capabilities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_capabilities_enabled_by_fkey"
+            columns: ["enabled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_capabilities_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"

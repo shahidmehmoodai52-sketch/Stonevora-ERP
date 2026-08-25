@@ -17,8 +17,22 @@ verified before the next begins.
   adjustments, barcode/QR scanning UI, multi-currency invoicing.
 - **Phase 1.x — deferred from Phase 1** (should-have, not yet built): Returns and
   Credit/Debit notes; manual stock adjustment workflow.
+- **Business capability model** ✅: Stonevora is a configurable multi-business-profile
+  platform, not a factory-only one. `business_capabilities` (global catalog) +
+  `tenant_capabilities` (per-tenant junction, RLS-gated on `company_settings.edit`)
+  let a tenant turn on only the operating modes it actually uses (Trading/
+  Distribution, Wholesale/Dealer, Retail Shop, Showroom Reservation, Block/Slab
+  Factory, Stone Fabrication, Tile Manufacturing, Multi-Branch/Multi-Godown) —
+  reusing the existing global-catalog + tenant-junction pattern from the Phase 0
+  product-attribute engine and the existing `company_settings` permission resource
+  rather than adding new infrastructure. New tenants get Trading/Distribution
+  (the only mode with real UI today) auto-enabled by `create_tenant_for_user`;
+  every other capability is opt-in metadata via Settings → Business capabilities,
+  and is marked "module UI not yet built" until its phase ships. This is the
+  prerequisite the next phases build on, not a phase in itself.
 - **Phase 2 — Block/Slab Factory mode**: raw block intake, cutting/processing,
-  graded slab output with yield tracking and cost roll-up.
+  graded slab output with yield tracking and cost roll-up. Gated behind the
+  `block_slab_factory` capability so it never surfaces for tenants that don't use it.
 - **Phase 3 — Stone Fabrication/Projects mode**: project-based job costing
   consuming slabs, invoiced via Phase 1's engine.
 - **Phase 4 — Tile Manufacturing mode**: recipes/BOM, batch production, shade/
