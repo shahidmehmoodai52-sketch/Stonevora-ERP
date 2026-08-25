@@ -30,36 +30,38 @@ export default async function UsersPage() {
   return (
     <div className="max-w-2xl">
       <h1 className="mb-6 text-xl font-semibold text-zinc-900 dark:text-zinc-50">Users</h1>
-      <table className="mb-8 w-full text-sm">
-        <thead>
-          <tr className="border-b border-zinc-200 text-left text-zinc-500 dark:border-zinc-800">
-            <th className="py-2">Name</th>
-            <th className="py-2">Email</th>
-            <th className="py-2">Roles</th>
-          </tr>
-        </thead>
-        <tbody>
-          {(memberships ?? []).map((m) => (
-            <tr key={m.user_id} className="border-b border-zinc-100 dark:border-zinc-900">
-              <td className="py-2">{m.profiles?.full_name || "—"}</td>
-              <td className="py-2">{m.profiles?.email}</td>
-              <td className="py-2">
-                <div className="flex flex-wrap gap-2">
-                  {(rolesByUser.get(m.user_id) ?? []).map((r) => (
-                    <span
-                      key={r.id}
-                      className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-xs dark:bg-zinc-800"
-                    >
-                      {r.roleName}
-                      <RemoveRoleButton userRoleId={r.id} action={removeUserRoleAction} />
-                    </span>
-                  ))}
-                </div>
-              </td>
+      <div className="-mx-4 mb-8 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-zinc-200 text-left text-zinc-500 dark:border-zinc-800">
+              <th className="py-3">Name</th>
+              <th className="py-3">Email</th>
+              <th className="py-3">Roles</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {(memberships ?? []).map((m) => (
+              <tr key={m.user_id} className="border-b border-zinc-100 dark:border-zinc-900">
+                <td className="whitespace-nowrap py-3">{m.profiles?.full_name || "—"}</td>
+                <td className="py-3">{m.profiles?.email}</td>
+                <td className="py-3">
+                  <div className="flex flex-wrap gap-2">
+                    {(rolesByUser.get(m.user_id) ?? []).map((r) => (
+                      <span
+                        key={r.id}
+                        className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-1 text-xs dark:bg-zinc-800"
+                      >
+                        {r.roleName}
+                        <RemoveRoleButton userRoleId={r.id} action={removeUserRoleAction} />
+                      </span>
+                    ))}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <h2 className="mb-4 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
         Assign a role to an existing member

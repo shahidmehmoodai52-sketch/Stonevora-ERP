@@ -26,56 +26,62 @@ export default async function ProductsPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">Products</h1>
         <Link
           href="/products/new"
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"
+          className="rounded-md bg-zinc-900 px-4 py-2.5 text-center text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"
         >
           New product
         </Link>
       </div>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-zinc-200 text-left text-zinc-500 dark:border-zinc-800">
-            <th className="py-2">SKU</th>
-            <th className="py-2">Name</th>
-            <th className="py-2">Tracking</th>
-            <th className="py-2">Stock UOM</th>
-            {showFinancials && <th className="py-2">Cost</th>}
-            {showFinancials && <th className="py-2">Margin %</th>}
-          </tr>
-        </thead>
-        <tbody>
-          {(products ?? []).map((p) => (
-            <tr key={p.id} className="border-b border-zinc-100 dark:border-zinc-900">
-              <td className="py-2">
-                <Link href={`/products/${p.id}`} className="font-medium hover:underline">
-                  {p.sku}
-                </Link>
-              </td>
-              <td className="py-2">{p.name}</td>
-              <td className="py-2">{p.inventory_tracking_mode}</td>
-              <td className="py-2">{p.base_uom_id ? uomCode.get(p.base_uom_id) : null}</td>
-              {showFinancials && (
-                <td className="py-2">{p.cost_price !== null ? p.cost_price : "—"}</td>
-              )}
-              {showFinancials && (
-                <td className="py-2">
-                  {p.standard_margin_pct !== null ? p.standard_margin_pct : "—"}
+      <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-zinc-200 text-left text-zinc-500 dark:border-zinc-800">
+              <th className="py-3">SKU</th>
+              <th className="py-3">Name</th>
+              <th className="hidden py-3 sm:table-cell">Tracking</th>
+              <th className="hidden py-3 sm:table-cell">Stock UOM</th>
+              {showFinancials && <th className="hidden py-3 md:table-cell">Cost</th>}
+              {showFinancials && <th className="hidden py-3 md:table-cell">Margin %</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {(products ?? []).map((p) => (
+              <tr key={p.id} className="border-b border-zinc-100 dark:border-zinc-900">
+                <td className="whitespace-nowrap py-3">
+                  <Link href={`/products/${p.id}`} className="font-medium hover:underline">
+                    {p.sku}
+                  </Link>
                 </td>
-              )}
-            </tr>
-          ))}
-          {(products ?? []).length === 0 && (
-            <tr>
-              <td colSpan={6} className="py-6 text-zinc-500">
-                No products yet.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+                <td className="py-3">{p.name}</td>
+                <td className="hidden py-3 sm:table-cell">{p.inventory_tracking_mode}</td>
+                <td className="hidden py-3 sm:table-cell">
+                  {p.base_uom_id ? uomCode.get(p.base_uom_id) : null}
+                </td>
+                {showFinancials && (
+                  <td className="hidden py-3 md:table-cell">
+                    {p.cost_price !== null ? p.cost_price : "—"}
+                  </td>
+                )}
+                {showFinancials && (
+                  <td className="hidden py-3 md:table-cell">
+                    {p.standard_margin_pct !== null ? p.standard_margin_pct : "—"}
+                  </td>
+                )}
+              </tr>
+            ))}
+            {(products ?? []).length === 0 && (
+              <tr>
+                <td colSpan={6} className="py-6 text-zinc-500">
+                  No products yet.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

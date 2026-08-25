@@ -191,6 +191,7 @@ export type Database = {
       inventory_batches: {
         Row: {
           batch_number: string
+          caliber_code: string | null
           created_at: string
           current_location_id: string | null
           expiry_date: string | null
@@ -205,6 +206,7 @@ export type Database = {
         }
         Insert: {
           batch_number: string
+          caliber_code?: string | null
           created_at?: string
           current_location_id?: string | null
           expiry_date?: string | null
@@ -219,6 +221,7 @@ export type Database = {
         }
         Update: {
           batch_number?: string
+          caliber_code?: string | null
           created_at?: string
           current_location_id?: string | null
           expiry_date?: string | null
@@ -337,43 +340,67 @@ export type Database = {
       }
       inventory_units: {
         Row: {
+          actual_area: number | null
           actual_length: number | null
           actual_thickness: number | null
           actual_width: number | null
+          cost: number | null
           created_at: string
           current_location_id: string | null
           id: string
+          parent_unit_id: string | null
+          photo_url: string | null
           product_id: string
+          qr_code_value: string | null
           quality_grade: string | null
+          selling_price: number | null
+          sequence_number: number | null
           status: string
           tenant_id: string
           unit_code: string
+          unit_type: Database["public"]["Enums"]["inventory_unit_type"]
         }
         Insert: {
+          actual_area?: number | null
           actual_length?: number | null
           actual_thickness?: number | null
           actual_width?: number | null
+          cost?: number | null
           created_at?: string
           current_location_id?: string | null
           id?: string
+          parent_unit_id?: string | null
+          photo_url?: string | null
           product_id: string
+          qr_code_value?: string | null
           quality_grade?: string | null
+          selling_price?: number | null
+          sequence_number?: number | null
           status?: string
           tenant_id: string
           unit_code: string
+          unit_type?: Database["public"]["Enums"]["inventory_unit_type"]
         }
         Update: {
+          actual_area?: number | null
           actual_length?: number | null
           actual_thickness?: number | null
           actual_width?: number | null
+          cost?: number | null
           created_at?: string
           current_location_id?: string | null
           id?: string
+          parent_unit_id?: string | null
+          photo_url?: string | null
           product_id?: string
+          qr_code_value?: string | null
           quality_grade?: string | null
+          selling_price?: number | null
+          sequence_number?: number | null
           status?: string
           tenant_id?: string
           unit_code?: string
+          unit_type?: Database["public"]["Enums"]["inventory_unit_type"]
         }
         Relationships: [
           {
@@ -381,6 +408,13 @@ export type Database = {
             columns: ["current_location_id"]
             isOneToOne: false
             referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_units_parent_unit_id_fkey"
+            columns: ["parent_unit_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_units"
             referencedColumns: ["id"]
           },
           {
@@ -1686,6 +1720,7 @@ export type Database = {
     }
     Enums: {
       inventory_tracking_mode: "simple" | "batch" | "unit"
+      inventory_unit_type: "block" | "slab" | "remnant"
       storage_location_type: "zone" | "row" | "rack" | "position"
       tenant_status: "trial" | "active" | "suspended" | "cancelled"
       uom_category: "count" | "length" | "area" | "volume" | "weight"
@@ -1818,6 +1853,7 @@ export const Constants = {
   public: {
     Enums: {
       inventory_tracking_mode: ["simple", "batch", "unit"],
+      inventory_unit_type: ["block", "slab", "remnant"],
       storage_location_type: ["zone", "row", "rack", "position"],
       tenant_status: ["trial", "active", "suspended", "cancelled"],
       uom_category: ["count", "length", "area", "volume", "weight"],

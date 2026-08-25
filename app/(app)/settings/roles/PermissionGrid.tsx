@@ -77,13 +77,16 @@ export function PermissionGrid({
                   if (!perm) return <td key={action} />;
                   const key = `${activeRoleId}:${perm.id}`;
                   return (
-                    <td key={action} className="py-2 px-2 text-center">
-                      <input
-                        type="checkbox"
-                        disabled={pending}
-                        checked={granted.has(key)}
-                        onChange={(e) => toggle(perm.id, e.target.checked)}
-                      />
+                    <td key={action} className="text-center">
+                      <label className="flex min-h-11 min-w-11 items-center justify-center">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4"
+                          disabled={pending}
+                          checked={granted.has(key)}
+                          onChange={(e) => toggle(perm.id, e.target.checked)}
+                        />
+                      </label>
                     </td>
                   );
                 })}
