@@ -1311,6 +1311,7 @@ export type Database = {
           branch_id: string
           cancelled_at: string | null
           completed_at: string | null
+          costs_recorded_at: string | null
           created_at: string
           created_by: string | null
           expected_slab_count: number | null
@@ -1320,10 +1321,13 @@ export type Database = {
           machine: string | null
           notes: string | null
           operator_id: string | null
+          overhead_cost: number | null
+          processing_cost: number | null
           stage: Database["public"]["Enums"]["processing_stage"]
           started_at: string | null
           status: Database["public"]["Enums"]["processing_job_status"]
           tenant_id: string
+          total_cost: number | null
           updated_at: string
           warehouse_id: string
           waste_volume: number | null
@@ -1336,6 +1340,7 @@ export type Database = {
           branch_id: string
           cancelled_at?: string | null
           completed_at?: string | null
+          costs_recorded_at?: string | null
           created_at?: string
           created_by?: string | null
           expected_slab_count?: number | null
@@ -1345,10 +1350,13 @@ export type Database = {
           machine?: string | null
           notes?: string | null
           operator_id?: string | null
+          overhead_cost?: number | null
+          processing_cost?: number | null
           stage?: Database["public"]["Enums"]["processing_stage"]
           started_at?: string | null
           status?: Database["public"]["Enums"]["processing_job_status"]
           tenant_id: string
+          total_cost?: number | null
           updated_at?: string
           warehouse_id: string
           waste_volume?: number | null
@@ -1361,6 +1369,7 @@ export type Database = {
           branch_id?: string
           cancelled_at?: string | null
           completed_at?: string | null
+          costs_recorded_at?: string | null
           created_at?: string
           created_by?: string | null
           expected_slab_count?: number | null
@@ -1370,10 +1379,13 @@ export type Database = {
           machine?: string | null
           notes?: string | null
           operator_id?: string | null
+          overhead_cost?: number | null
+          processing_cost?: number | null
           stage?: Database["public"]["Enums"]["processing_stage"]
           started_at?: string | null
           status?: Database["public"]["Enums"]["processing_job_status"]
           tenant_id?: string
+          total_cost?: number | null
           updated_at?: string
           warehouse_id?: string
           waste_volume?: number | null
@@ -3989,6 +4001,14 @@ export type Database = {
       }
       receive_stock_transfer: {
         Args: { p_line_quantities?: Json; p_stock_transfer_id: string }
+        Returns: undefined
+      }
+      record_processing_costs: {
+        Args: {
+          p_overhead_cost?: number
+          p_processing_cost: number
+          p_processing_job_id: string
+        }
         Returns: undefined
       }
       record_qc_inspection: {

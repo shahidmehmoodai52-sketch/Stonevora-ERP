@@ -244,7 +244,47 @@ verified before the next begins.
     scoping and the capability gate re-confirmed. Milestone 3's test file
     updated for the new `pending_qc` default (its one assertion that
     expected immediate `in_stock` now expects `pending_qc`).
-  - Milestone 6 (Cost Roll-up) onward: not started.
+  - **Milestone 6 — Cost Roll-up** ✅: a block's landed cost (Milestone 1)
+    plus whatever processing and overhead were actually incurred cutting it
+    become the cost basis for everything it produced, split across the
+    individual slabs/remnants — never charged equally per piece. New
+    `record_processing_costs` RPC, callable once a job is `completed`:
+    computes `total_cost = block.cost + processing_cost + overhead_cost`
+    (the latter two are entered figures, not computed — exactly like
+    Milestone 1 never invented a machine-rate formula and simply accepted
+    `freight_cost`/`duty_cost`/`handling_cost` as entered values on a goods
+    receipt) and allocates it across every output unit from that job
+    proportional to its own **volume** share of the job's total output
+    volume — the same proportional-share technique `post_goods_receipt`
+    already uses for landed cost across GRN lines (Milestone 1), reused here
+    on a volume basis rather than area, because volume is the one physical
+    quantity already computed for every output unit (Milestone 4, for
+    yield) that honestly represents how much of the block's material a
+    piece consumed — allocating by area instead would systematically
+    overcharge thin pieces and undercharge thick ones whenever thickness
+    varies within a job's output. Waste gets no cost bucket of its own (no
+    inventory row — Milestone 4), so the full cost is entirely absorbed by
+    whatever was actually produced, matching how a real factory eats its
+    own scrap cost; a 100%-waste job still records its job-level cost
+    fields with nothing to allocate to. Costs can only be recorded once per
+    job (`costs_recorded_at`) — a correction workflow wasn't requested,
+    matching the same choice Milestone 5 made for QC records.
+    **A real precision bug was found and fixed during this milestone's own
+    independent verification**: the allocation used an intermediate
+    `v_share numeric(18,6)` variable that rounded the volume fraction to 6
+    decimal places *before* multiplying by the total cost, producing a
+    small but real error (expected ≈24496.8329, got 24496.8100 on one test
+    case). Fixed by computing the allocation as a single expression
+    (`total_cost * unit.volume / total_output_volume`) with no rounded
+    intermediate, re-verified live — allocated costs now sum back to
+    exactly the total, matching independent hand-calculation to the cent.
+    Live-verified via a real Milestone-1 block intake (not a manually
+    inserted test block) carrying a genuine landed cost: multi-unit
+    proportional allocation (2 slabs + 1 remnant, independently
+    hand-verified), the 100%-waste zero-allocation case, double-recording
+    rejection, not-yet-completed rejection, negative-cost rejection,
+    no-block-cost rejection, and branch-scoping/capability-gate protections.
+  - Milestone 7 (End-to-End Verification) onward: not started.
 - **Phase 3 — Stone Fabrication/Projects mode**: project-based job costing
   consuming slabs, invoiced via Phase 1's engine.
 - **Phase 4 — Tile Manufacturing mode**: recipes/BOM, batch production, shade/
