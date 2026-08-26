@@ -341,8 +341,71 @@ verified before the next begins.
     `execute_sql` call) — re-run with the correct context, confirmed
     correct; noted here for the same transparency this project has applied
     to every real finding.
-- **Phase 3 — Stone Fabrication/Projects mode**: project-based job costing
-  consuming slabs, invoiced via Phase 1's engine.
+- **Phase 3 — Stone Fabrication/Projects mode** ✅ (optional capability:
+  `stone_fabrication`, already present in the capability catalog since Phase 0
+  — no new capability row needed): project-based job costing that consumes
+  finished slabs/remnants from Phase 2's Factory (or received directly) into
+  a customer project alongside labor/overhead, then invoices by **area**
+  (sqft/sqm) — the universal countertop-industry billing convention —
+  through Phase 1's own invoicing tables (`sales_invoices`/
+  `sales_invoice_lines`), exactly as the roadmap specified, rather than a
+  parallel billing engine. New `projects` (branch-scoped header) +
+  `project_materials` (join table: which `inventory_units` a project
+  consumed) tables; `inventory_units.consumed_by_project_id` mirrors the
+  existing `output_processing_job_id` column shape (Milestone 4) so a
+  slab's full life — GRN line → block → processing job → slab → project —
+  stays a plain foreign-key walk, live-verified end to end. Status is
+  deliberately just draft/completed/cancelled (no separate in_progress
+  state — a fabrication job's day-to-day cutting/polishing work isn't
+  itself a database transaction this system needs to track, unlike
+  Factory's `processing_jobs`). Five new RPCs: `add_project_material`/
+  `remove_project_material` (consumes/releases a slab or remnant, requiring
+  `in_stock` status and a recorded cost — mirroring Milestone 6's precedent
+  of never treating an uncosted unit as free — and maintaining a live
+  running `material_cost`), `complete_project` (locks entered
+  `labor_cost`/`overhead_cost`, `total_cost = material_cost + labor_cost +
+  overhead_cost` — the same never-invented-figures discipline as every
+  prior costing milestone), `cancel_project` (releases every consumed
+  material back to `in_stock`, blocked once completed), and
+  `generate_project_invoice` (bills by each unit's own `actual_area`/
+  `area_uom_id`, caller-supplied `unit_price` per material — never invented
+  — with `unit_cost` computed as the project's locked `total_cost` spread
+  flat across its total consumed area; this is Milestone 6's
+  proportional-by-area allocation, which collapses to a flat rate because
+  every unit of area shares the same job cost pool by definition). New
+  `project` permission resource (11 standard actions, matching
+  `purchasing`/`sales`): `sales_manager` gets the same full grant shape as
+  their existing `sales` resource; `factory_manager`/`production_manager`
+  get view/create/edit only — **deliberately excluded from
+  `generate_project_invoice`**, which also requires `sales`.`create`
+  (needed for the RLS insert on `sales_invoices` regardless), enforcing a
+  real separation of duties between production and billing — live-verified:
+  a factory-manager-only user successfully added materials to and completed
+  a project, then was correctly rejected invoicing it.
+  **Applying the lesson found twice already** (Factory Milestone 2's
+  `start_processing_job`/`cancel_processing_job`, migration 0040; the
+  Phase 1 branch-scoping gap discovered during this phase's own research,
+  migration 0045): every one of these five RPCs got its
+  `has_branch_access()` check from its first version, in the body, from the
+  start — not bolted on after a live exploit a third time. Live-verified
+  the full lifecycle (multi-material project, add/remove materials,
+  complete with labor/overhead, invoice by area, full traceability from
+  project back through slab/job/block to GRN line/supplier/quarry via plain
+  joins), every rejection path (wrong unit type, non-`in_stock` unit,
+  uncosted unit, double-consumption, capability gate, branch scoping on all
+  four mutating RPCs, missing permission, double-invoicing, missing
+  `unit_price`), and margin redaction on `sales_invoice_lines_secure`.
+  **A real schema bug was found and fixed during this phase's own
+  verification**: `projects.tenant_id`/`project_materials.tenant_id` were
+  created without `on delete cascade`, inconsistent with every other
+  tenant-scoped table's convention — caught when this phase's own test-data
+  cleanup failed a tenant delete on a leftover `projects` row; fixed via a
+  follow-up migration matching the established FK convention, re-verified
+  by re-running the same cleanup successfully. Full regression confirmed
+  for Phase 1 (repeated live `post_goods_receipt` calls) and Phase 2
+  (repeated live `start_processing_job`/`complete_processing_job`/
+  `record_qc_inspection`/`record_processing_costs` calls) throughout this
+  phase's own test setup.
 - **Phase 4 — Tile Manufacturing mode**: recipes/BOM, batch production, shade/
   caliber/kiln attributes, batch-level QC.
 - **Phase 5 — Showroom/Reservation mode**: reservation/hold workflow converting

@@ -996,6 +996,7 @@ export type Database = {
           actual_thickness: number | null
           actual_width: number | null
           area_uom_id: string | null
+          consumed_by_project_id: string | null
           cost: number | null
           created_at: string
           current_location_id: string | null
@@ -1028,6 +1029,7 @@ export type Database = {
           actual_thickness?: number | null
           actual_width?: number | null
           area_uom_id?: string | null
+          consumed_by_project_id?: string | null
           cost?: number | null
           created_at?: string
           current_location_id?: string | null
@@ -1060,6 +1062,7 @@ export type Database = {
           actual_thickness?: number | null
           actual_width?: number | null
           area_uom_id?: string | null
+          consumed_by_project_id?: string | null
           cost?: number | null
           created_at?: string
           current_location_id?: string | null
@@ -1092,6 +1095,13 @@ export type Database = {
             columns: ["area_uom_id"]
             isOneToOne: false
             referencedRelation: "uom"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_units_consumed_by_project_id_fkey"
+            columns: ["consumed_by_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
           {
@@ -1927,6 +1937,171 @@ export type Database = {
           id?: string
         }
         Relationships: []
+      }
+      project_materials: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          id: string
+          inventory_unit_id: string
+          project_id: string
+          tenant_id: string
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          id?: string
+          inventory_unit_id: string
+          project_id: string
+          tenant_id: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          id?: string
+          inventory_unit_id?: string
+          project_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_materials_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_materials_inventory_unit_id_fkey"
+            columns: ["inventory_unit_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_materials_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_materials_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          branch_id: string
+          cancelled_at: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          description: string | null
+          id: string
+          invoice_id: string | null
+          invoiced_at: string | null
+          labor_cost: number | null
+          material_cost: number
+          overhead_cost: number | null
+          project_number: string
+          status: Database["public"]["Enums"]["project_status"]
+          tenant_id: string
+          total_cost: number | null
+          updated_at: string
+          warehouse_id: string | null
+        }
+        Insert: {
+          branch_id: string
+          cancelled_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          description?: string | null
+          id?: string
+          invoice_id?: string | null
+          invoiced_at?: string | null
+          labor_cost?: number | null
+          material_cost?: number
+          overhead_cost?: number | null
+          project_number: string
+          status?: Database["public"]["Enums"]["project_status"]
+          tenant_id: string
+          total_cost?: number | null
+          updated_at?: string
+          warehouse_id?: string | null
+        }
+        Update: {
+          branch_id?: string
+          cancelled_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          description?: string | null
+          id?: string
+          invoice_id?: string | null
+          invoiced_at?: string | null
+          labor_cost?: number | null
+          material_cost?: number
+          overhead_cost?: number | null
+          project_number?: string
+          status?: Database["public"]["Enums"]["project_status"]
+          tenant_id?: string
+          total_cost?: number | null
+          updated_at?: string
+          warehouse_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "sales_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       purchase_invoices: {
         Row: {
@@ -3947,10 +4122,15 @@ export type Database = {
       }
     }
     Functions: {
+      add_project_material: {
+        Args: { p_inventory_unit_id: string; p_project_id: string }
+        Returns: undefined
+      }
       cancel_processing_job: {
         Args: { p_processing_job_id: string }
         Returns: undefined
       }
+      cancel_project: { Args: { p_project_id: string }; Returns: undefined }
       cancel_stock_transfer: {
         Args: { p_stock_transfer_id: string }
         Returns: undefined
@@ -3958,6 +4138,14 @@ export type Database = {
       complete_processing_job: {
         Args: { p_processing_job_id: string; p_slabs: Json }
         Returns: string[]
+      }
+      complete_project: {
+        Args: {
+          p_labor_cost: number
+          p_overhead_cost?: number
+          p_project_id: string
+        }
+        Returns: undefined
       }
       confirm_sales_order: {
         Args: { p_sales_order_id: string }
@@ -3978,6 +4166,14 @@ export type Database = {
         Returns: string
       }
       dispatch_delivery: { Args: { p_delivery_id: string }; Returns: undefined }
+      generate_project_invoice: {
+        Args: {
+          p_invoice_number: string
+          p_material_prices: Json
+          p_project_id: string
+        }
+        Returns: string
+      }
       generate_sales_invoice_from_delivery: {
         Args: { p_delivery_id: string; p_invoice_number: string }
         Returns: string
@@ -4021,6 +4217,10 @@ export type Database = {
         }
         Returns: string
       }
+      remove_project_material: {
+        Args: { p_inventory_unit_id: string; p_project_id: string }
+        Returns: undefined
+      }
       ship_stock_transfer: {
         Args: { p_stock_transfer_id: string }
         Returns: undefined
@@ -4051,6 +4251,7 @@ export type Database = {
       landed_cost_basis: "value" | "quantity"
       processing_job_status: "draft" | "in_progress" | "completed" | "cancelled"
       processing_stage: "cutting" | "squaring" | "polishing" | "other"
+      project_status: "draft" | "completed" | "cancelled"
       purchase_invoice_status: "draft" | "posted" | "partially_paid" | "paid"
       purchase_order_status:
         | "draft"
@@ -4231,6 +4432,7 @@ export const Constants = {
       landed_cost_basis: ["value", "quantity"],
       processing_job_status: ["draft", "in_progress", "completed", "cancelled"],
       processing_stage: ["cutting", "squaring", "polishing", "other"],
+      project_status: ["draft", "completed", "cancelled"],
       purchase_invoice_status: ["draft", "posted", "partially_paid", "paid"],
       purchase_order_status: [
         "draft",
