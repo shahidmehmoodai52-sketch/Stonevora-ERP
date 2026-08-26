@@ -17,6 +17,31 @@ verified before the next begins.
   adjustments, barcode/QR scanning UI, multi-currency invoicing.
 - **Phase 1.x — deferred from Phase 1** (should-have, not yet built): Returns and
   Credit/Debit notes; manual stock adjustment workflow.
+- **Phase 1 security fix (migration 0045)** ✅: a real, exploitable
+  branch-scoping gap found incidentally while researching Phase 3's own
+  invoicing RPC (looking for the branch-check precedent to match).
+  Migration 0033 (Factory-Ready Foundation, Branch-level RLS) added
+  `has_branch_access()` to every purchasing/sales *table's* RLS policy, but
+  never propagated the same check into the four `SECURITY DEFINER`
+  integrity functions that actually perform the state-changing writes on
+  those tables: `post_goods_receipt`, `confirm_sales_order`,
+  `dispatch_delivery`, `generate_sales_invoice_from_delivery`. Exactly the
+  same bug class Factory Milestone 2 found and fixed for
+  `start_processing_job`/`cancel_processing_job` (migration 0040): a
+  `SECURITY DEFINER` function's own body bypasses RLS entirely on the
+  tables it touches, so relying on the table policy is not sufficient — the
+  function itself must re-check branch access explicitly. **Live-reproduced
+  before fixing**: a user scoped only to Branch B could not see a Branch-A
+  goods receipt via a plain `select` (RLS correctly hid it), but calling
+  `post_goods_receipt(<branch-A-receipt-id>)` directly succeeded outright —
+  fully posted it (`status` → `'posted'`, real stock created) — proving the
+  read-side RLS gave no protection at all against the write-side RPC.
+  Fixed by inserting one `has_branch_access` check into each of the four
+  functions (byte-for-byte identical bodies otherwise); all four
+  re-verified live on fresh test data, each showing both a correctly
+  rejected Branch-B-scoped caller and an unaffected legitimate
+  (unrestricted) caller. Automated regression coverage added in
+  `tests/rls/phase1-branch-scoping.test.ts`.
 - **Business capability model** ✅: Stonevora is a configurable multi-business-profile
   platform, not a factory-only one. `business_capabilities` (global catalog) +
   `tenant_capabilities` (per-tenant junction, RLS-gated on `company_settings.edit`)
