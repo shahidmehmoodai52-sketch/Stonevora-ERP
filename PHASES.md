@@ -15,8 +15,61 @@ verified before the next begins.
   Invoices (margin redacted per role) → Payments → Customer/Supplier ledgers.
   Not included yet (deferred, see below): Returns/Credit-Debit notes, manual stock
   adjustments, barcode/QR scanning UI, multi-currency invoicing.
-- **Phase 1.x — deferred from Phase 1** (should-have, not yet built): Returns and
-  Credit/Debit notes; manual stock adjustment workflow.
+- **Phase 1.x — deferred from Phase 1** ✅: Returns/Credit-Debit notes and a
+  manual stock adjustment workflow, both always-on (no capability gate,
+  matching Phase 1's own scope). Economy decision: a **posted**
+  `sales_return`/`purchase_return` row **is** the credit/debit note — no
+  separate document-type table — the same pattern this codebase already
+  used for "a quotation is a sales order in draft status" (0020_sales.sql).
+  New `stock_adjustments`/`sales_returns`/`purchase_returns` (+ line) tables;
+  `sales_invoice_lines.returned_quantity`/`goods_receipt_lines
+  .returned_quantity` track cumulative returns the same way
+  `purchase_order_lines.received_quantity`/`sales_order_lines
+  .delivered_quantity` already track cumulative fulfillment. Three RPCs:
+  `post_stock_adjustment` (blends a caller-entered `unit_cost` into the
+  existing weighted average on increase — never invented, never defaulted
+  to the current average, matching every prior costing milestone —
+  straight decrement on decrease, validated against `qty_on_hand -
+  reserved_qty`), `post_sales_return` (validates against the invoice line's
+  own cumulative `returned_quantity`, restocks via the exact same
+  weighted-average blend `post_goods_receipt` uses because a restock *is* a
+  receipt of previously-sold goods, when `restock = true`), `post_purchase_return`
+  (the mirror image — decrements stock with no cost blend, matching
+  `dispatch_delivery`'s own plain decrement, validated against both
+  available stock and the GRN line's cumulative `returned_quantity`).
+  `customer_ledger`/`supplier_ledger` (0026) are extended to include posted
+  returns as negative entries — the exact mechanism by which a credit/debit
+  note offsets what's owed, reusing the same sign convention payments
+  already use, rather than inventing a separate allocation workflow (an
+  explicitly documented boundary, not silently dropped). A new
+  `sales_return_lines_secure` view mirrors `sales_invoice_lines_secure`'s
+  cost/margin redaction exactly. No new permission resource: sales/purchase
+  returns reuse the existing `sales`/`purchasing` resources (a return is
+  just another sales/purchasing-side transaction); stock adjustments reuse
+  `warehouse` (`inventory_manager`/`warehouse_staff` already hold this
+  grant) — no `create_tenant_for_user` role-wiring changes needed.
+  Unit-tracked (block/slab) products are explicitly out of scope for both
+  returns and adjustments, for the same reason `confirm_sales_order`
+  already rejects them in Phase 1, and because Factory/Stone Fabrication
+  already have their own QC-driven status machine for "this piece turned
+  out bad."
+  **Applying the branch-scoping lesson proactively** (as Phase 3 also did):
+  all three RPCs got `has_branch_access()` checks in their bodies from
+  their first version — no exploit needed to be found and patched this
+  time. Live-verified: full
+  sales-return lifecycle (post, restock, cumulative-quantity tracking,
+  ledger entry, margin redaction), full purchase-return lifecycle (post,
+  decrement, cumulative-quantity tracking, ledger entry), over-return
+  rejection on both sides, insufficient-stock rejection on both sides,
+  stock-adjustment lifecycle (simple + batch-tracked cost blending on
+  increase, plain decrement, missing-`unit_cost` rejection,
+  insufficient-stock rejection, unit-tracked-product rejection), branch
+  scoping on all three RPCs, and permission-denial on all three RPCs
+  (salesperson blocked from `warehouse.edit`/`purchasing.edit`,
+  warehouse_staff blocked from `sales.edit`). Full regression confirmed for
+  Phase 1's own `post_goods_receipt`/`confirm_sales_order`/
+  `dispatch_delivery`/`generate_sales_invoice_from_delivery` throughout
+  this phase's own test setup.
 - **Phase 1 security fix (migration 0045)** ✅: a real, exploitable
   branch-scoping gap found incidentally while researching Phase 3's own
   invoicing RPC (looking for the branch-check precedent to match).
