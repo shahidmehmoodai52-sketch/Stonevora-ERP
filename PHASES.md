@@ -459,8 +459,98 @@ verified before the next begins.
   (repeated live `start_processing_job`/`complete_processing_job`/
   `record_qc_inspection`/`record_processing_costs` calls) throughout this
   phase's own test setup.
-- **Phase 4 — Tile Manufacturing mode**: recipes/BOM, batch production, shade/
-  caliber/kiln attributes, batch-level QC.
+- **Phase 4 — Tile Manufacturing mode** ✅ (optional capability:
+  `tile_manufacturing`, already present in the capability catalog since Phase 0
+  — no new capability row needed): recipe-driven batch production. A tile
+  factory holds a bill of materials (recipe) per finished tile product —
+  fixed raw-material quantities per a fixed output quantity — and runs a
+  production batch that consumes those raw materials, fires the kiln, and
+  produces a shade/caliber-graded **batch** of finished tiles (not
+  individually serialized pieces like Factory's slabs — tiles are the
+  textbook case Phase 0's `batch` inventory paradigm was built for). New
+  `bill_of_materials`/`bill_of_materials_lines` (recipe; reuses the
+  `product` permission resource with no branch scoping, exactly like
+  `category_attribute_templates`, since a recipe is product-master data,
+  not a transaction) and `production_batches`/`production_batch_consumptions`
+  (the job; reuses `production`, exactly like Factory's `processing_jobs`)
+  tables. **Batch-level QC gate**, mirroring Factory Milestone 5's
+  unit-level gate exactly: `inventory_batches` gains a `status` enum column
+  (`pending_qc`/`in_stock`/`rejected`, defaulting to `in_stock` so every
+  existing batch-tracked flow — ordinary GRN receipts, Phase 1.x
+  adjustments/returns — is completely unaffected), and `confirm_sales_order`
+  is patched to only ever reserve/count `in_stock` batches, so a
+  newly-produced, not-yet-inspected or rejected batch structurally cannot be
+  sold. `qc_inspections` (0043) is reused for batch QC rather than a
+  parallel table (a nullable `inventory_unit_id` + new `inventory_batch_id`
+  with an exactly-one-subject check constraint), and
+  `record_batch_qc_inspection` derives branch access via
+  `inventory_batches.output_production_batch_id → production_batches
+  .branch_id` — the same reverse-lookup shape `record_qc_inspection`
+  already uses via `output_processing_job_id`, since `inventory_batches`
+  carries no `branch_id` of its own. Four new RPCs:
+  `start_production_batch` (consumes every BOM line's raw material, scaled
+  by `planned_output_quantity / bom.output_quantity`, via the same
+  FIFO-style consumption loops `confirm_sales_order`/`dispatch_delivery`
+  already use for simple/batch-tracked stock — batch-tracked raw materials
+  must themselves be `in_stock`; rejects unit-tracked raw materials, an
+  inactive BOM, and insufficient stock), `complete_production_batch`
+  (creates the finished-goods `inventory_batches` row at `pending_qc`,
+  requiring a caller-supplied `p_output_location_id` validated against the
+  batch's own warehouse — necessary because `confirm_sales_order`'s
+  batch-tracked branch `INNER JOIN`s `storage_locations`, so a null
+  `current_location_id` would make the batch permanently unsellable;
+  `total_cost = raw_material_cost` (locked at start) `+` caller-entered
+  `labor_cost/overhead_cost` — never invented, matching every prior costing
+  milestone; rejects a non-batch-tracked finished product and a
+  wrong-warehouse output location), `cancel_production_batch` (a `draft`
+  batch releases nothing; an `in_progress` batch's raw materials are
+  already consumed and — a real, deliberate domain difference from
+  Factory, where the block stays physically whole until cutting — cannot
+  be un-mixed, so cancelling records a genuine, permanent cost loss rather
+  than silently reversing it; no `has_capability` check, matching
+  `cancel_processing_job`'s own precedent exactly), and
+  `record_batch_qc_inspection` (`passed` → `in_stock`, anything else →
+  `rejected`; a rejected batch keeps its cost and quantity — the raw
+  material really was consumed — it just never counts as available stock).
+  **Applying the branch-scoping lesson proactively** (as Phase 3 and Phase
+  1.x also did): all four RPCs got `has_branch_access()` checks in their
+  bodies from their first version — no exploit needed to be found and
+  patched this time.
+  **A real bug was found and fixed during this phase's own verification**:
+  `record_batch_qc_inspection`'s status update —
+  `case when p_outcome = 'passed' then 'in_stock' else 'rejected' end` —
+  failed live with `column "status" is of type inventory_batch_status but
+  expression is of type text`, because Postgres infers an untyped `CASE`
+  string literal as `text`, which cannot be implicitly assigned to an enum
+  column. Fixed with an explicit `::inventory_batch_status` cast on the
+  `CASE` expression; re-verified live (the same QC-pass call that had
+  failed now correctly flipped the batch to `in_stock`) before the
+  migration was ever committed.
+  Live-verified: the full golden path (BOM-scaled consumption — 200 kg
+  clay × $2 + 20 kg glaze × $5 = exactly 500.0000 raw-material cost;
+  cost roll-up — (500 + 50 labor + 20 overhead) / 10 = exactly 57.0000
+  cost/SQM; simple-tracked and batch-tracked raw-material stock decrements
+  both exact), the QC gate proven **both ways** on live data (a
+  `pending_qc` batch correctly invisible to `confirm_sales_order`, 0
+  available; after a passed inspection the same batch correctly becomes
+  `in_stock`, and the sales order that had failed now confirms and
+  reserves exactly the ordered quantity; a separate rejected batch
+  permanently excluded from availability), `cancel_production_batch` for
+  both `draft` (trivial) and `in_progress` (no restoration, confirmed by
+  stock levels unchanged) states, branch-scoping rejection on all four
+  RPCs, permission-denial rejection on all four RPCs (`production.edit`
+  for start/complete/cancel, `production.approve` for QC inspection), the
+  capability gate on the three RPCs that check it (confirmed
+  `cancel_production_batch` deliberately does not), and every remaining
+  rejection path (inactive BOM, insufficient raw-material stock,
+  unit-tracked raw material, wrong-warehouse output location,
+  non-batch-tracked finished product). Full regression confirmed: every
+  pre-existing `inventory_batches` row retained its backward-compatible
+  `in_stock` default (zero nulls), and Phase 1's `confirm_sales_order`
+  path is unaffected for non-batch-tracked products (the new `status`
+  filter only touches the batch-tracked branch). Automated regression
+  coverage added in `tests/rls/phase4-tile-manufacturing.test.ts`, mirroring
+  every live-verified path above.
 - **Phase 5 — Showroom/Reservation mode**: reservation/hold workflow converting
   into Phase 1 sales orders.
 - **Phase 6 — Accounting depth**: Chart of Accounts, double-entry ledger, P&L/

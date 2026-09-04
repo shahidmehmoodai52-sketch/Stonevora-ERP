@@ -61,6 +61,150 @@ export type Database = {
           },
         ]
       }
+      bill_of_materials: {
+        Row: {
+          bom_number: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          name: string | null
+          notes: string | null
+          output_quantity: number
+          output_uom_id: string
+          product_id: string
+          tenant_id: string
+        }
+        Insert: {
+          bom_number: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string | null
+          notes?: string | null
+          output_quantity: number
+          output_uom_id: string
+          product_id: string
+          tenant_id: string
+        }
+        Update: {
+          bom_number?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string | null
+          notes?: string | null
+          output_quantity?: number
+          output_uom_id?: string
+          product_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bill_of_materials_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bill_of_materials_output_uom_id_fkey"
+            columns: ["output_uom_id"]
+            isOneToOne: false
+            referencedRelation: "uom"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bill_of_materials_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bill_of_materials_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bill_of_materials_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bill_of_materials_lines: {
+        Row: {
+          bom_id: string
+          created_at: string
+          id: string
+          quantity: number
+          raw_material_product_id: string
+          tenant_id: string
+          uom_id: string
+        }
+        Insert: {
+          bom_id: string
+          created_at?: string
+          id?: string
+          quantity: number
+          raw_material_product_id: string
+          tenant_id: string
+          uom_id: string
+        }
+        Update: {
+          bom_id?: string
+          created_at?: string
+          id?: string
+          quantity?: number
+          raw_material_product_id?: string
+          tenant_id?: string
+          uom_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bill_of_materials_lines_bom_id_fkey"
+            columns: ["bom_id"]
+            isOneToOne: false
+            referencedRelation: "bill_of_materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bill_of_materials_lines_raw_material_product_id_fkey"
+            columns: ["raw_material_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bill_of_materials_lines_raw_material_product_id_fkey"
+            columns: ["raw_material_product_id"]
+            isOneToOne: false
+            referencedRelation: "products_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bill_of_materials_lines_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bill_of_materials_lines_uom_id_fkey"
+            columns: ["uom_id"]
+            isOneToOne: false
+            referencedRelation: "uom"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       branches: {
         Row: {
           address: string | null
@@ -841,10 +985,12 @@ export type Database = {
           id: string
           lot_number: string | null
           manufactured_date: string | null
+          output_production_batch_id: string | null
           product_id: string
           qty_on_hand: number
           reserved_qty: number
           shade_code: string | null
+          status: Database["public"]["Enums"]["inventory_batch_status"]
           tenant_id: string
           uom_id: string | null
         }
@@ -858,10 +1004,12 @@ export type Database = {
           id?: string
           lot_number?: string | null
           manufactured_date?: string | null
+          output_production_batch_id?: string | null
           product_id: string
           qty_on_hand?: number
           reserved_qty?: number
           shade_code?: string | null
+          status?: Database["public"]["Enums"]["inventory_batch_status"]
           tenant_id: string
           uom_id?: string | null
         }
@@ -875,10 +1023,12 @@ export type Database = {
           id?: string
           lot_number?: string | null
           manufactured_date?: string | null
+          output_production_batch_id?: string | null
           product_id?: string
           qty_on_hand?: number
           reserved_qty?: number
           shade_code?: string | null
+          status?: Database["public"]["Enums"]["inventory_batch_status"]
           tenant_id?: string
           uom_id?: string | null
         }
@@ -888,6 +1038,13 @@ export type Database = {
             columns: ["current_location_id"]
             isOneToOne: false
             referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_batches_output_production_batch_id_fkey"
+            columns: ["output_production_batch_id"]
+            isOneToOne: false
+            referencedRelation: "production_batches"
             referencedColumns: ["id"]
           },
           {
@@ -1690,6 +1847,186 @@ export type Database = {
             columns: ["uom_id"]
             isOneToOne: false
             referencedRelation: "uom"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_batch_consumptions: {
+        Row: {
+          created_at: string
+          id: string
+          production_batch_id: string
+          quantity: number
+          raw_material_product_id: string
+          tenant_id: string
+          unit_cost: number | null
+          uom_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          production_batch_id: string
+          quantity: number
+          raw_material_product_id: string
+          tenant_id: string
+          unit_cost?: number | null
+          uom_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          production_batch_id?: string
+          quantity?: number
+          raw_material_product_id?: string
+          tenant_id?: string
+          unit_cost?: number | null
+          uom_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_batch_consumptions_production_batch_id_fkey"
+            columns: ["production_batch_id"]
+            isOneToOne: false
+            referencedRelation: "production_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_batch_consumptions_raw_material_product_id_fkey"
+            columns: ["raw_material_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_batch_consumptions_raw_material_product_id_fkey"
+            columns: ["raw_material_product_id"]
+            isOneToOne: false
+            referencedRelation: "products_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_batch_consumptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_batch_consumptions_uom_id_fkey"
+            columns: ["uom_id"]
+            isOneToOne: false
+            referencedRelation: "uom"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_batches: {
+        Row: {
+          actual_output_quantity: number | null
+          batch_number: string
+          bom_id: string
+          branch_id: string
+          caliber_code: string | null
+          cancelled_at: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          kiln_number: string | null
+          labor_cost: number | null
+          notes: string | null
+          overhead_cost: number | null
+          planned_output_quantity: number
+          raw_material_cost: number | null
+          shade_code: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["production_batch_status"]
+          tenant_id: string
+          total_cost: number | null
+          warehouse_id: string
+        }
+        Insert: {
+          actual_output_quantity?: number | null
+          batch_number: string
+          bom_id: string
+          branch_id: string
+          caliber_code?: string | null
+          cancelled_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kiln_number?: string | null
+          labor_cost?: number | null
+          notes?: string | null
+          overhead_cost?: number | null
+          planned_output_quantity: number
+          raw_material_cost?: number | null
+          shade_code?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["production_batch_status"]
+          tenant_id: string
+          total_cost?: number | null
+          warehouse_id: string
+        }
+        Update: {
+          actual_output_quantity?: number | null
+          batch_number?: string
+          bom_id?: string
+          branch_id?: string
+          caliber_code?: string | null
+          cancelled_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kiln_number?: string | null
+          labor_cost?: number | null
+          notes?: string | null
+          overhead_cost?: number | null
+          planned_output_quantity?: number
+          raw_material_cost?: number | null
+          shade_code?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["production_batch_status"]
+          tenant_id?: string
+          total_cost?: number | null
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_batches_bom_id_fkey"
+            columns: ["bom_id"]
+            isOneToOne: false
+            referencedRelation: "bill_of_materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_batches_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_batches_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_batches_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_batches_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
             referencedColumns: ["id"]
           },
         ]
@@ -2575,7 +2912,8 @@ export type Database = {
           id: string
           inspected_at: string
           inspected_by: string | null
-          inventory_unit_id: string
+          inventory_batch_id: string | null
+          inventory_unit_id: string | null
           notes: string | null
           outcome: Database["public"]["Enums"]["qc_outcome"]
           tenant_id: string
@@ -2587,7 +2925,8 @@ export type Database = {
           id?: string
           inspected_at?: string
           inspected_by?: string | null
-          inventory_unit_id: string
+          inventory_batch_id?: string | null
+          inventory_unit_id?: string | null
           notes?: string | null
           outcome: Database["public"]["Enums"]["qc_outcome"]
           tenant_id: string
@@ -2599,7 +2938,8 @@ export type Database = {
           id?: string
           inspected_at?: string
           inspected_by?: string | null
-          inventory_unit_id?: string
+          inventory_batch_id?: string | null
+          inventory_unit_id?: string | null
           notes?: string | null
           outcome?: Database["public"]["Enums"]["qc_outcome"]
           tenant_id?: string
@@ -2617,6 +2957,13 @@ export type Database = {
             columns: ["inspected_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qc_inspections_inventory_batch_id_fkey"
+            columns: ["inventory_batch_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_batches"
             referencedColumns: ["id"]
           },
           {
@@ -4811,6 +5158,10 @@ export type Database = {
         Args: { p_processing_job_id: string }
         Returns: undefined
       }
+      cancel_production_batch: {
+        Args: { p_production_batch_id: string }
+        Returns: undefined
+      }
       cancel_project: { Args: { p_project_id: string }; Returns: undefined }
       cancel_stock_transfer: {
         Args: { p_stock_transfer_id: string }
@@ -4819,6 +5170,18 @@ export type Database = {
       complete_processing_job: {
         Args: { p_processing_job_id: string; p_slabs: Json }
         Returns: string[]
+      }
+      complete_production_batch: {
+        Args: {
+          p_actual_output_quantity: number
+          p_caliber_code?: string
+          p_labor_cost?: number
+          p_output_location_id: string
+          p_overhead_cost?: number
+          p_production_batch_id: string
+          p_shade_code?: string
+        }
+        Returns: string
       }
       complete_project: {
         Args: {
@@ -4892,6 +5255,16 @@ export type Database = {
         Args: { p_line_quantities?: Json; p_stock_transfer_id: string }
         Returns: undefined
       }
+      record_batch_qc_inspection: {
+        Args: {
+          p_confirmed_grade?: string
+          p_defects?: string
+          p_inventory_batch_id: string
+          p_notes?: string
+          p_outcome: Database["public"]["Enums"]["qc_outcome"]
+        }
+        Returns: string
+      }
       record_processing_costs: {
         Args: {
           p_overhead_cost?: number
@@ -4922,6 +5295,10 @@ export type Database = {
         Args: { p_processing_job_id: string }
         Returns: undefined
       }
+      start_production_batch: {
+        Args: { p_production_batch_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       customer_type:
@@ -4933,6 +5310,7 @@ export type Database = {
         | "international"
       delivery_status: "draft" | "dispatched" | "delivered"
       goods_receipt_status: "draft" | "posted"
+      inventory_batch_status: "pending_qc" | "in_stock" | "rejected"
       inventory_tracking_mode: "simple" | "batch" | "unit"
       inventory_unit_status:
         | "in_stock"
@@ -4944,6 +5322,11 @@ export type Database = {
       landed_cost_basis: "value" | "quantity"
       processing_job_status: "draft" | "in_progress" | "completed" | "cancelled"
       processing_stage: "cutting" | "squaring" | "polishing" | "other"
+      production_batch_status:
+        | "draft"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
       project_status: "draft" | "completed" | "cancelled"
       purchase_invoice_status: "draft" | "posted" | "partially_paid" | "paid"
       purchase_order_status:
@@ -5123,6 +5506,7 @@ export const Constants = {
       ],
       delivery_status: ["draft", "dispatched", "delivered"],
       goods_receipt_status: ["draft", "posted"],
+      inventory_batch_status: ["pending_qc", "in_stock", "rejected"],
       inventory_tracking_mode: ["simple", "batch", "unit"],
       inventory_unit_status: [
         "in_stock",
@@ -5135,6 +5519,12 @@ export const Constants = {
       landed_cost_basis: ["value", "quantity"],
       processing_job_status: ["draft", "in_progress", "completed", "cancelled"],
       processing_stage: ["cutting", "squaring", "polishing", "other"],
+      production_batch_status: [
+        "draft",
+        "in_progress",
+        "completed",
+        "cancelled",
+      ],
       project_status: ["draft", "completed", "cancelled"],
       purchase_invoice_status: ["draft", "posted", "partially_paid", "paid"],
       purchase_order_status: [
