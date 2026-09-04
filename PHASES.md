@@ -415,3 +415,26 @@ verified before the next begins.
 - **Phase 7 — QR/Mobile/barcode**: scanning flows for receiving, put-away,
   picking, and stocktake.
 - **Phase 8 — Reporting/Dashboards**: cross-module analytics.
+- **Phase 9 — Offline-first + Desktop + Mobile + SEO** (deferred until every
+  functional phase above is complete; decisions locked in with the user so
+  this doesn't need re-litigating later):
+  - **Desktop**: Tauri (not Electron) — lighter, lower resource use, and
+    explicitly chosen for genuine offline operation, not just a browser
+    shortcut.
+  - **Mobile**: Capacitor wrapper around the same Next.js app, published to
+    Play Store (not a bare PWA install, not a separate React Native
+    codebase). Explicit user requirement, verbatim concern: the mobile
+    experience must be properly responsive, not "the desktop layout just
+    doesn't fit on a small screen" — every screen needs a real mobile-first
+    pass (tables/wide layouts in particular), not merely wrapped.
+  - **Offline scope**: full offline-first — data entry (invoices, orders,
+    GRNs, etc.) must work with no connectivity at all, syncing to Supabase
+    once back online. This is the deep, hard version (local database +
+    background sync + conflict handling), explicitly chosen over
+    read-only PWA caching.
+  - **SEO**: the public landing page (Phase 0) needs a full SEO pass —
+    metadata, sitemap/robots (already scaffolded), structured data,
+    performance.
+  - Sequencing, per explicit user instruction: nothing in this phase starts
+    until the functional roadmap above (Phase 1.x through Phase 8) is
+    complete.
