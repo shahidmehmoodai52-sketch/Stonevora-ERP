@@ -551,8 +551,79 @@ verified before the next begins.
   filter only touches the batch-tracked branch). Automated regression
   coverage added in `tests/rls/phase4-tile-manufacturing.test.ts`, mirroring
   every live-verified path above.
-- **Phase 5 — Showroom/Reservation mode**: reservation/hold workflow converting
-  into Phase 1 sales orders.
+- **Phase 5 — Showroom/Reservation mode** ✅ (optional capability:
+  `showroom_reservation`, already present in the capability catalog since
+  Phase 0 — no new capability row needed): a walk-in showroom customer can
+  hold specific stock while they decide/arrange payment, without yet
+  committing to a full sales order. Economy of design: a reservation is its
+  own lightweight header+line pair (`stock_reservations`/
+  `stock_reservation_lines`, status `draft → active → converted/released`),
+  not a repurposed `sales_orders` row — a reservation predates any
+  commitment to buy (a customer can walk away without ever ordering), needs
+  its own expiry, and its `draft` stage is even lighter than a sales
+  order's (no pricing/currency required, though `unit_price` is required
+  per line so the reservation itself always shows an indicative price).
+  Converting an active reservation hands its already-reserved stock off
+  directly into a real `sales_orders` row created straight to `confirmed`
+  (deliberately **not** calling `confirm_sales_order`, since re-running its
+  own reservation pass against stock this reservation already holds would
+  double-reserve it) — the same "generate into Phase 1's own table" reuse
+  Phase 3 already established for `generate_project_invoice` writing into
+  `sales_invoices`. No new permission resource: reuses `sales`, exactly like
+  Phase 1.x reused `sales`/`purchasing` for returns — no
+  `create_tenant_for_user` role-wiring changes needed. Three RPCs:
+  `activate_stock_reservation` (places the real hold — byte-for-byte the
+  same two-pass validate-then-reserve FIFO shape `confirm_sales_order`
+  already uses, so Phase 4's batch-level QC gate is respected for free
+  since batch-tracked lines only ever draw from `status = 'in_stock'`
+  batches; `p_hold_hours` has no default, since hold duration is a
+  business-policy choice, not something to silently default),
+  `release_stock_reservation` (gives the held stock back without ever
+  creating a sales order — works on an `active` reservation regardless of
+  expiry, so staff can free an expired-but-unreleased hold at any time; no
+  `has_capability` check, matching `cancel_production_batch`/
+  `cancel_processing_job` precedent — releasing is undoing one's own hold,
+  gated by permission/status, not capability), and
+  `convert_reservation_to_sales_order` (creates the `sales_orders`/
+  `sales_order_lines` rows directly, reusing the reservation's own locked
+  `base_quantity` from activation rather than recomputing it — the same
+  "lock at start" discipline `raw_material_cost` established in Phase 4 —
+  and refuses to convert past `expires_at`).
+  **Explicit scope boundary** (mirroring the exact boundary
+  `confirm_sales_order` already draws): unit-tracked products (blocks/slabs)
+  are **not** reservable here, the same as they are not yet sellable through
+  `confirm_sales_order`/`dispatch_delivery` at all — extending the whole
+  Phase 1 sales pipeline to handle unit-tracked delivery is a separate,
+  larger piece of work than this phase's own scope, left for a future
+  phase rather than half-built here. **No automatic expiry sweep**: this
+  codebase has no scheduled-job infrastructure yet, so `expires_at` is a
+  stored, checked field, not a background process —
+  `convert_reservation_to_sales_order` refuses to convert an expired hold;
+  `release_stock_reservation` works on it regardless, so staff can clean it
+  up manually at any time. An expired-but-unreleased reservation keeps its
+  hold until someone releases it — a known, explicit limitation, not a
+  silent bug. **Applying the branch-scoping lesson proactively** (as every
+  phase since Phase 1.x has): all three RPCs got `has_branch_access()`
+  checks in their bodies from their first version.
+  Live-verified: the full golden path (activation holds stock proportionally
+  across both simple- and batch-tracked products; conversion hands the hold
+  off to a `confirmed` sales order without double-reserving — inventory
+  `reserved_qty` unchanged across the conversion boundary; the resulting
+  order dispatches cleanly through Phase 1's own unmodified
+  `dispatch_delivery`, decrementing stock and zeroing `reserved_qty`
+  exactly as any ordinary sales order would), `release_stock_reservation`
+  correctly returning held stock without ever creating an order, an expired
+  reservation correctly blocked from conversion but still releasable, every
+  rejection path (unit-tracked product, insufficient stock, zero/negative
+  `hold_hours`, re-activating a non-draft reservation, empty `so_number`),
+  branch-scoping rejection on all three RPCs, permission-denial rejection
+  on all three RPCs (`sales.edit`), and the capability gate on
+  `activate`/`convert` (confirmed `release` deliberately does not check
+  it). Full regression confirmed: Phase 1's own `confirm_sales_order` path
+  is completely unaffected (this phase adds new tables and RPCs only — no
+  existing function was modified). Automated regression coverage added in
+  `tests/rls/phase5-showroom-reservations.test.ts`, mirroring every
+  live-verified path above.
 - **Phase 6 — Accounting depth**: Chart of Accounts, double-entry ledger, P&L/
   balance sheet.
 - **Phase 7 — QR/Mobile/barcode**: scanning flows for receiving, put-away,

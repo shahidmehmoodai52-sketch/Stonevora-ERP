@@ -3826,6 +3826,175 @@ export type Database = {
           },
         ]
       }
+      stock_reservation_lines: {
+        Row: {
+          base_quantity: number | null
+          created_at: string
+          id: string
+          product_id: string
+          quantity: number
+          stock_reservation_id: string
+          tenant_id: string
+          unit_price: number
+          uom_id: string
+        }
+        Insert: {
+          base_quantity?: number | null
+          created_at?: string
+          id?: string
+          product_id: string
+          quantity: number
+          stock_reservation_id: string
+          tenant_id: string
+          unit_price: number
+          uom_id: string
+        }
+        Update: {
+          base_quantity?: number | null
+          created_at?: string
+          id?: string
+          product_id?: string
+          quantity?: number
+          stock_reservation_id?: string
+          tenant_id?: string
+          unit_price?: number
+          uom_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_reservation_lines_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_reservation_lines_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_reservation_lines_stock_reservation_id_fkey"
+            columns: ["stock_reservation_id"]
+            isOneToOne: false
+            referencedRelation: "stock_reservations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_reservation_lines_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_reservation_lines_uom_id_fkey"
+            columns: ["uom_id"]
+            isOneToOne: false
+            referencedRelation: "uom"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_reservations: {
+        Row: {
+          activated_at: string | null
+          branch_id: string
+          converted_at: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          expires_at: string | null
+          id: string
+          notes: string | null
+          released_at: string | null
+          reservation_number: string
+          sales_order_id: string | null
+          status: Database["public"]["Enums"]["stock_reservation_status"]
+          tenant_id: string
+          warehouse_id: string
+        }
+        Insert: {
+          activated_at?: string | null
+          branch_id: string
+          converted_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          expires_at?: string | null
+          id?: string
+          notes?: string | null
+          released_at?: string | null
+          reservation_number: string
+          sales_order_id?: string | null
+          status?: Database["public"]["Enums"]["stock_reservation_status"]
+          tenant_id: string
+          warehouse_id: string
+        }
+        Update: {
+          activated_at?: string | null
+          branch_id?: string
+          converted_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          expires_at?: string | null
+          id?: string
+          notes?: string | null
+          released_at?: string | null
+          reservation_number?: string
+          sales_order_id?: string | null
+          status?: Database["public"]["Enums"]["stock_reservation_status"]
+          tenant_id?: string
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_reservations_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_reservations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_reservations_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_reservations_sales_order_id_fkey"
+            columns: ["sales_order_id"]
+            isOneToOne: false
+            referencedRelation: "sales_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_reservations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_reservations_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_transfer_lines: {
         Row: {
           base_quantity: number | null
@@ -5150,6 +5319,10 @@ export type Database = {
       }
     }
     Functions: {
+      activate_stock_reservation: {
+        Args: { p_hold_hours: number; p_stock_reservation_id: string }
+        Returns: undefined
+      }
       add_project_material: {
         Args: { p_inventory_unit_id: string; p_project_id: string }
         Returns: undefined
@@ -5194,6 +5367,10 @@ export type Database = {
       confirm_sales_order: {
         Args: { p_sales_order_id: string }
         Returns: undefined
+      }
+      convert_reservation_to_sales_order: {
+        Args: { p_so_number: string; p_stock_reservation_id: string }
+        Returns: string
       }
       convert_uom_quantity: {
         Args: {
@@ -5283,6 +5460,10 @@ export type Database = {
         }
         Returns: string
       }
+      release_stock_reservation: {
+        Args: { p_stock_reservation_id: string }
+        Returns: undefined
+      }
       remove_project_material: {
         Args: { p_inventory_unit_id: string; p_project_id: string }
         Returns: undefined
@@ -5359,6 +5540,7 @@ export type Database = {
         | "count_correction"
         | "other"
       stock_adjustment_status: "draft" | "posted" | "cancelled"
+      stock_reservation_status: "draft" | "active" | "converted" | "released"
       stock_transfer_status:
         | "draft"
         | "requested"
@@ -5561,6 +5743,7 @@ export const Constants = {
         "other",
       ],
       stock_adjustment_status: ["draft", "posted", "cancelled"],
+      stock_reservation_status: ["draft", "active", "converted", "released"],
       stock_transfer_status: [
         "draft",
         "requested",
