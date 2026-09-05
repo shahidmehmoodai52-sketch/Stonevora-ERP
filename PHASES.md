@@ -729,8 +729,74 @@ verified before the next begins.
   phase's own test setup. Automated regression coverage added in
   `tests/rls/phase6-accounting.test.ts`, mirroring every live-verified path
   above.
-- **Phase 7 — QR/Mobile/barcode**: scanning flows for receiving, put-away,
-  picking, and stocktake.
+- **Phase 7 — QR/Mobile/barcode** ✅: backend/data layer for scanning flows
+  and a barcode/QR generator, scoped per explicit user decision — camera-
+  based scanning UI is a separate, later pass this session cannot verify
+  the way it verifies SQL; everything shipped here is live-SQL-verified
+  like every other phase. Two genuinely new pieces, plus one pure-lookup
+  convenience function:
+  1. **Stocktake (physical count) workflow** — the one piece of
+     "receiving/put-away/picking/stocktake" with no backing schema at all
+     yet (receiving/put-away/picking already have full RPCs from Phase 1/
+     Phase 1.x — a scanner just fills their existing fields faster; no new
+     RPC needed for those three, and none of their existing RPCs were
+     touched). New `stocktakes`/`stocktake_lines` tables, status `draft →
+     counting → posted/cancelled`. Reuses Phase 1.x's `stock_adjustments`
+     engine for the actual correction (`reason_code = 'count_correction'`,
+     already in that enum) instead of re-implementing cost-blending/
+     decrement logic a second time: `post_stocktake` builds exactly one
+     `stock_adjustments` document from every counted variance and calls
+     the existing `post_stock_adjustment(uuid)` directly, inheriting its
+     cost math and its own permission/branch checks. A found item's cost
+     is valued at the product's current weighted-average — reusing an
+     existing system number, never inventing one. Same unit-tracked-
+     product boundary `post_stock_adjustment` already draws. Four RPCs:
+     `start_stocktake_count` (snapshots `system_quantity` from live
+     inventory so the baseline can't shift mid-count), `record_stocktake_count`
+     (one line at a time, so counting survives interruption/any order),
+     `post_stocktake` (requires every line counted first; skips creating
+     any adjustment at all on a perfect count), `cancel_stocktake` (a true
+     no-op undo — no stock ever moves until posting, unlike
+     `cancel_production_batch`/`cancel_stock_transfer`).
+  2. **Barcode/QR generator** — `generate_product_barcode`/
+     `generate_inventory_unit_qr_code` assign a real, checksum-valid
+     EAN-13 code (GS1's 20-29 prefix range, reserved for internal/
+     restricted-circulation use — correct practice for an internally-
+     assigned code with no registered GS1 company prefix, not an invented
+     format) only when the row doesn't already have one, so a real
+     manufacturer barcode a user already entered is never overwritten.
+     Live-verified: every generated code passes EAN-13 checksum
+     validation; calling again on an already-coded row is a no-op
+     returning the same value.
+  `resolve_scanned_code` is a plain `SECURITY INVOKER` lookup (deliberately
+  not `SECURITY DEFINER` — no RLS bypass needed or wanted for a read-only
+  convenience query a client could otherwise run as four separate selects)
+  that turns one scanned string into whichever product/location/unit/batch
+  it matches, across every existing scannable field
+  (`products.barcode`/`qr_code_value`/`sku`, `storage_locations.code`,
+  `inventory_units.unit_code`/`qr_code_value`, `inventory_batches
+  .batch_number`) — a receiving/put-away/picking screen feeds the resolved
+  id straight into its existing insert flow (GRN lines, delivery lines,
+  ...), so this phase changes zero existing transactional RPCs.
+  Live-verified: the full stocktake golden path (variances in both
+  directions on the same document — a simple-tracked shrinkage and a
+  batch-tracked found-surplus — correctly posted as one balanced
+  `stock_adjustments` document, inventory corrected exactly), a perfect
+  count correctly skipping adjustment creation entirely, `cancel_stocktake`
+  from both `draft` and `counting` (and correctly rejected from `posted`),
+  every rejection path (empty stocktake, unit-tracked product, negative
+  count, posting with uncounted lines, wrong-status calls), `resolve_scanned_code`
+  correctly resolving all four match types plus a clean empty result for
+  a garbage code, branch-scoping rejection on all four stocktake RPCs,
+  permission-denial rejection on all four stocktake RPCs
+  (`warehouse.edit`) and both generator RPCs (`product.edit`), and a
+  Viewer correctly still able to call the read-only `resolve_scanned_code`
+  despite having none of the write permissions. Full regression confirmed:
+  `post_stock_adjustment` still posts an ordinary, manually-created
+  adjustment correctly (this phase only ever calls it, never modifies it).
+  Automated regression coverage added in
+  `tests/rls/phase7-scanning-and-stocktake.test.ts`, mirroring every
+  live-verified path above.
 - **Phase 8 — Reporting/Dashboards**: cross-module analytics.
 - **Phase 9 — Offline-first + Desktop + Mobile + SEO** (deferred until every
   functional phase above is complete; decisions locked in with the user so

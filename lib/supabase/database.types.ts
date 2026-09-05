@@ -4402,6 +4402,189 @@ export type Database = {
           },
         ]
       }
+      stocktake_lines: {
+        Row: {
+          batch_id: string | null
+          counted_at: string | null
+          counted_by: string | null
+          counted_quantity: number | null
+          created_at: string
+          id: string
+          location_id: string | null
+          product_id: string
+          stocktake_id: string
+          system_quantity: number | null
+          tenant_id: string
+          uom_id: string
+        }
+        Insert: {
+          batch_id?: string | null
+          counted_at?: string | null
+          counted_by?: string | null
+          counted_quantity?: number | null
+          created_at?: string
+          id?: string
+          location_id?: string | null
+          product_id: string
+          stocktake_id: string
+          system_quantity?: number | null
+          tenant_id: string
+          uom_id: string
+        }
+        Update: {
+          batch_id?: string | null
+          counted_at?: string | null
+          counted_by?: string | null
+          counted_quantity?: number | null
+          created_at?: string
+          id?: string
+          location_id?: string | null
+          product_id?: string
+          stocktake_id?: string
+          system_quantity?: number | null
+          tenant_id?: string
+          uom_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stocktake_lines_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stocktake_lines_counted_by_fkey"
+            columns: ["counted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stocktake_lines_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "storage_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stocktake_lines_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stocktake_lines_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_secure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stocktake_lines_stocktake_id_fkey"
+            columns: ["stocktake_id"]
+            isOneToOne: false
+            referencedRelation: "stocktakes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stocktake_lines_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stocktake_lines_uom_id_fkey"
+            columns: ["uom_id"]
+            isOneToOne: false
+            referencedRelation: "uom"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stocktakes: {
+        Row: {
+          branch_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          posted_at: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["stocktake_status"]
+          stock_adjustment_id: string | null
+          stocktake_number: string
+          tenant_id: string
+          warehouse_id: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          posted_at?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["stocktake_status"]
+          stock_adjustment_id?: string | null
+          stocktake_number: string
+          tenant_id: string
+          warehouse_id: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          posted_at?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["stocktake_status"]
+          stock_adjustment_id?: string | null
+          stocktake_number?: string
+          tenant_id?: string
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stocktakes_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stocktakes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stocktakes_stock_adjustment_id_fkey"
+            columns: ["stock_adjustment_id"]
+            isOneToOne: false
+            referencedRelation: "stock_adjustments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stocktakes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stocktakes_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       storage_locations: {
         Row: {
           code: string
@@ -5535,6 +5718,7 @@ export type Database = {
         Args: { p_stock_transfer_id: string }
         Returns: undefined
       }
+      cancel_stocktake: { Args: { p_stocktake_id: string }; Returns: undefined }
       complete_processing_job: {
         Args: { p_processing_job_id: string; p_slabs: Json }
         Returns: string[]
@@ -5582,6 +5766,18 @@ export type Database = {
         Returns: string
       }
       dispatch_delivery: { Args: { p_delivery_id: string }; Returns: undefined }
+      generate_ean13_code: {
+        Args: { p_pool: string; p_tenant_id: string }
+        Returns: string
+      }
+      generate_inventory_unit_qr_code: {
+        Args: { p_inventory_unit_id: string }
+        Returns: string
+      }
+      generate_product_barcode: {
+        Args: { p_product_id: string }
+        Returns: string
+      }
       generate_project_invoice: {
         Args: {
           p_invoice_number: string
@@ -5658,6 +5854,7 @@ export type Database = {
         Args: { p_stock_adjustment_id: string }
         Returns: undefined
       }
+      post_stocktake: { Args: { p_stocktake_id: string }; Returns: string }
       receive_stock_transfer: {
         Args: { p_line_quantities?: Json; p_stock_transfer_id: string }
         Returns: undefined
@@ -5690,6 +5887,10 @@ export type Database = {
         }
         Returns: string
       }
+      record_stocktake_count: {
+        Args: { p_counted_quantity: number; p_stocktake_line_id: string }
+        Returns: undefined
+      }
       release_stock_reservation: {
         Args: { p_stock_reservation_id: string }
         Returns: undefined
@@ -5697,6 +5898,15 @@ export type Database = {
       remove_project_material: {
         Args: { p_inventory_unit_id: string; p_project_id: string }
         Returns: undefined
+      }
+      resolve_scanned_code: {
+        Args: { p_code: string; p_tenant_id: string }
+        Returns: {
+          id: string
+          label: string
+          match_type: string
+          secondary: string
+        }[]
       }
       reverse_journal_entry: {
         Args: { p_journal_entry_id: string; p_reason: string }
@@ -5712,6 +5922,10 @@ export type Database = {
       }
       start_production_batch: {
         Args: { p_production_batch_id: string }
+        Returns: undefined
+      }
+      start_stocktake_count: {
+        Args: { p_stocktake_id: string }
         Returns: undefined
       }
     }
@@ -5782,6 +5996,7 @@ export type Database = {
         | "in_transit"
         | "received"
         | "cancelled"
+      stocktake_status: "draft" | "counting" | "posted" | "cancelled"
       storage_location_type: "zone" | "row" | "rack" | "position"
       tenant_status: "trial" | "active" | "suspended" | "cancelled"
       uom_category: "count" | "length" | "area" | "volume" | "weight"
@@ -5987,6 +6202,7 @@ export const Constants = {
         "received",
         "cancelled",
       ],
+      stocktake_status: ["draft", "counting", "posted", "cancelled"],
       storage_location_type: ["zone", "row", "rack", "position"],
       tenant_status: ["trial", "active", "suspended", "cancelled"],
       uom_category: ["count", "length", "area", "volume", "weight"],
