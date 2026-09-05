@@ -624,8 +624,111 @@ verified before the next begins.
   existing function was modified). Automated regression coverage added in
   `tests/rls/phase5-showroom-reservations.test.ts`, mirroring every
   live-verified path above.
-- **Phase 6 — Accounting depth**: Chart of Accounts, double-entry ledger, P&L/
-  balance sheet.
+- **Phase 6 — Accounting depth** ✅: Chart of Accounts + a real double-entry
+  ledger + P&L/Balance Sheet reporting. Unlike every prior phase (one new
+  business workflow reusing an existing permission resource), accounting is
+  a genuinely new domain reading across every other module — it earns its
+  own `accounting` permission resource (same 11-action shape as
+  `sales`/`purchasing`/`production`/`project`), with reporting gated on the
+  `view_financial` action already sitting unused in the Phase 0 catalog.
+  **Deliberately contained scope**: rather than retrofitting a
+  journal-posting hook into every transaction RPC in the codebase (returns,
+  adjustments, production costing, project invoicing — a much larger,
+  riskier blast radius), this phase wires automatic posting into exactly
+  the two RPCs that already carry the full Trading/Distribution loop's
+  revenue/expense recognition — `post_goods_receipt` (Dr Inventory / Cr
+  Accounts Payable, for the exact landed-cost value already being written
+  to `inventory_stock`/`inventory_batches`/`inventory_units`, so the
+  posting can never drift from the physical one) and
+  `generate_sales_invoice_from_delivery` (Dr Accounts Receivable / Cr Sales
+  Revenue for the invoice subtotal, plus Dr COGS / Cr Inventory for the
+  exact per-line `unit_cost` `dispatch_delivery` already captured at
+  dispatch) — plus the two payment tables via new triggers additive to
+  their existing Phase 1 sync triggers (customer payment: Dr Cash / Cr AR;
+  supplier payment: Dr AP / Cr Cash). Returns/adjustments/production/
+  project-invoice auto-posting is an explicit, documented boundary for a
+  future phase, exactly like Phase 5 left unit-tracked reservation out of
+  scope rather than half-building it. A manual `post_journal_entry` RPC
+  (accepting a `jsonb` line array, mirroring the existing
+  `complete_processing_job`-style jsonb-array precedent, and rejecting an
+  unbalanced entry before writing anything) covers everything else —
+  opening balances, corrections, operating expenses. Posted entries are
+  never edited, only reversed: `reverse_journal_entry` creates the mirror
+  image (debits and credits swapped) referencing what it reverses, and
+  rejects double-reversal.
+  **Chart of Accounts** follows the exact `role_templates → roles` pattern
+  from Phase 0: a new global `account_templates` catalog (10 standard
+  accounts — Cash, AR, Inventory, AP, Tax Payable, Owner's Equity, Retained
+  Earnings, Sales Revenue, COGS, Operating Expenses) copied into a new
+  tenant's own `chart_of_accounts` at creation time, so every tenant can
+  customize its own COA afterward without touching the global template.
+  Seeded accounts are marked `is_system = true` and protected by a trigger
+  (`protect_system_account`) from having their `code`/`account_type`
+  changed or being deleted — auto-posting depends on looking them up by a
+  stable code — while `name`/`is_active`/`parent` stay freely editable.
+  **Applying the branch-scoping lesson proactively** (as every phase since
+  Phase 1.x has): every new RPC checks `has_branch_access()` from its first
+  version. `get_profit_and_loss`/`get_balance_sheet` are deliberately
+  single-branch only (`p_branch_id` required, not optional) — a
+  company-wide cross-branch aggregate would need to check every branch the
+  caller has access to, which no existing report in this codebase does
+  yet; left as a documented boundary rather than building an unverified
+  privilege surface.
+  **Two real bugs found and fixed during this phase's own live
+  verification, both before the migration was ever committed**: (1)
+  `get_balance_sheet` initially reported assets of 1600 against
+  liabilities+equity of 1200 on a real test trading loop — off by exactly
+  the 400 of net income, because this phase adds no period-close step that
+  sweeps revenue/expense balances into retained earnings. Fixed by adding
+  a synthetic "Current Period Earnings" equity line (revenue net minus
+  expense net, cumulative to the as-of date) to the report — the standard
+  way an interim (not-yet-closed) balance sheet stays balanced; re-verified
+  and the accounting identity (assets = liabilities + equity) now holds
+  exactly. (2) The `protect_system_account` trigger, as first written,
+  blocked deleting a whole test tenant outright — the tenant's own cascade
+  delete into `chart_of_accounts` tripped the same protection meant for a
+  direct, standalone delete. Fixed by allowing the delete when it is part
+  of the owning tenant's own cascade removal (checked by whether the
+  tenant row itself still exists — Postgres removes the parent row before
+  firing a cascade's child deletes), re-verified both ways: a live
+  tenant still cannot have a system account deleted directly, but deleting
+  the tenant itself now cleanly cascades.
+  **A separate, unrelated regression was also found and fixed while
+  reproducing `create_tenant_for_user` in full** (required regardless, to
+  add the new `accounting` permission grants): the `insert into
+  tenant_capabilities ... 'trading_distribution'` call — present in 0031,
+  0039, and 0043 — went missing when Phase 3 (0046) last reproduced this
+  function, so every tenant created since Phase 3 was never auto-granted
+  Trading/Distribution. Nothing in the codebase actually gates on it via
+  `has_capability` (the Settings → Business Capabilities screen would
+  simply show it as off), so this was cosmetic rather than a functional
+  break, but it's restored here now that this function had to be touched
+  anyway.
+  Live-verified: the full golden path on a real trading loop (GRN → Dr
+  Inventory/Cr AP exactly 2000; sale confirm → dispatch → invoice → Dr
+  AR/Cr Revenue exactly 1200 and Dr COGS/Cr Inventory exactly 800;
+  customer payment → Dr Cash/Cr AR exactly 500, with the pre-existing
+  Phase 1 payment-sync trigger firing correctly alongside the new one;
+  supplier payment → Dr AP/Cr Cash exactly 800), manual
+  `post_journal_entry` (balance validation rejecting an unbalanced entry,
+  successful balanced posting) and `reverse_journal_entry` (correct mirror
+  image, double-reversal rejection), system-account protection (delete and
+  identity-change rejected, name/is_active still editable, tenant cascade
+  delete unblocked), branch-scoping rejection on all four RPCs
+  (`post_journal_entry`/`reverse_journal_entry`/`get_profit_and_loss`/
+  `get_balance_sheet`), permission-denial rejection on all four
+  (`accounting.create`/`accounting.edit`/`accounting.view_financial`), and
+  the `accountant` role's grants confirmed correct
+  (`create`/`edit`/`view`/`view_cost`/`view_profit`/`view_financial` on
+  `accounting`). P&L and Balance Sheet cross-verified against each other
+  (net income of 400 on the P&L matches the Balance Sheet's Current Period
+  Earnings line exactly). Full regression confirmed: `post_goods_receipt`
+  and `generate_sales_invoice_from_delivery`'s entire pre-existing behavior
+  (landed-cost allocation, stock updates, PO/SO status transitions,
+  invoice line creation) reproduced byte-for-byte correct throughout this
+  phase's own test setup. Automated regression coverage added in
+  `tests/rls/phase6-accounting.test.ts`, mirroring every live-verified path
+  above.
 - **Phase 7 — QR/Mobile/barcode**: scanning flows for receiving, put-away,
   picking, and stocktake.
 - **Phase 8 — Reporting/Dashboards**: cross-module analytics.

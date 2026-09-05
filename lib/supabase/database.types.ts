@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_templates: {
+        Row: {
+          account_type: Database["public"]["Enums"]["account_type"]
+          code: string
+          id: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          account_type: Database["public"]["Enums"]["account_type"]
+          code: string
+          id?: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          account_type?: Database["public"]["Enums"]["account_type"]
+          code?: string
+          id?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       audit_log: {
         Row: {
           action: string
@@ -318,6 +342,57 @@ export type Database = {
           },
           {
             foreignKeyName: "category_attribute_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chart_of_accounts: {
+        Row: {
+          account_type: Database["public"]["Enums"]["account_type"]
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          is_system: boolean
+          name: string
+          parent_account_id: string | null
+          tenant_id: string
+        }
+        Insert: {
+          account_type: Database["public"]["Enums"]["account_type"]
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          name: string
+          parent_account_id?: string | null
+          tenant_id: string
+        }
+        Update: {
+          account_type?: Database["public"]["Enums"]["account_type"]
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          name?: string
+          parent_account_id?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chart_of_accounts_parent_account_id_fkey"
+            columns: ["parent_account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chart_of_accounts_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -1339,6 +1414,126 @@ export type Database = {
             columns: ["weight_uom_id"]
             isOneToOne: false
             referencedRelation: "uom"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      journal_entries: {
+        Row: {
+          branch_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          entry_date: string
+          id: string
+          reference_id: string | null
+          reference_type: string
+          reverses_entry_id: string | null
+          tenant_id: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          entry_date?: string
+          id?: string
+          reference_id?: string | null
+          reference_type: string
+          reverses_entry_id?: string | null
+          tenant_id: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          entry_date?: string
+          id?: string
+          reference_id?: string | null
+          reference_type?: string
+          reverses_entry_id?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_entries_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_entries_reverses_entry_id_fkey"
+            columns: ["reverses_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_entries_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      journal_entry_lines: {
+        Row: {
+          account_id: string
+          credit: number
+          debit: number
+          description: string | null
+          id: string
+          journal_entry_id: string
+          tenant_id: string
+        }
+        Insert: {
+          account_id: string
+          credit?: number
+          debit?: number
+          description?: string | null
+          id?: string
+          journal_entry_id: string
+          tenant_id: string
+        }
+        Update: {
+          account_id?: string
+          credit?: number
+          debit?: number
+          description?: string | null
+          id?: string
+          journal_entry_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_entry_lines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_entry_lines_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_entry_lines_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -5399,6 +5594,31 @@ export type Database = {
         Args: { p_delivery_id: string; p_invoice_number: string }
         Returns: string
       }
+      get_balance_sheet: {
+        Args: { p_as_of_date: string; p_branch_id: string; p_tenant_id: string }
+        Returns: {
+          account_id: string
+          account_type: Database["public"]["Enums"]["account_type"]
+          amount: number
+          code: string
+          name: string
+        }[]
+      }
+      get_profit_and_loss: {
+        Args: {
+          p_branch_id: string
+          p_end_date: string
+          p_start_date: string
+          p_tenant_id: string
+        }
+        Returns: {
+          account_id: string
+          account_type: Database["public"]["Enums"]["account_type"]
+          amount: number
+          code: string
+          name: string
+        }[]
+      }
       has_branch_access: {
         Args: { check_branch_id: string; check_tenant_id: string }
         Returns: boolean
@@ -5415,6 +5635,16 @@ export type Database = {
       post_goods_receipt: {
         Args: { p_goods_receipt_id: string }
         Returns: undefined
+      }
+      post_journal_entry: {
+        Args: {
+          p_branch_id: string
+          p_description: string
+          p_entry_date: string
+          p_lines: Json
+          p_tenant_id: string
+        }
+        Returns: string
       }
       post_purchase_return: {
         Args: { p_purchase_return_id: string }
@@ -5468,6 +5698,10 @@ export type Database = {
         Args: { p_inventory_unit_id: string; p_project_id: string }
         Returns: undefined
       }
+      reverse_journal_entry: {
+        Args: { p_journal_entry_id: string; p_reason: string }
+        Returns: string
+      }
       ship_stock_transfer: {
         Args: { p_stock_transfer_id: string }
         Returns: undefined
@@ -5482,6 +5716,7 @@ export type Database = {
       }
     }
     Enums: {
+      account_type: "asset" | "liability" | "equity" | "revenue" | "expense"
       customer_type:
         | "retail"
         | "dealer"
@@ -5678,6 +5913,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      account_type: ["asset", "liability", "equity", "revenue", "expense"],
       customer_type: [
         "retail",
         "dealer",
