@@ -906,26 +906,73 @@ verified before the next begins.
   directly and cross-checked. Automated regression coverage added in
   `tests/rls/phase8-reporting-dashboards.test.ts`, mirroring every
   live-verified path above.
-- **Phase 9 — Offline-first + Desktop + Mobile + SEO** (deferred until every
-  functional phase above is complete; decisions locked in with the user so
-  this doesn't need re-litigating later):
-  - **Desktop**: Tauri (not Electron) — lighter, lower resource use, and
-    explicitly chosen for genuine offline operation, not just a browser
-    shortcut.
-  - **Mobile**: Capacitor wrapper around the same Next.js app, published to
-    Play Store (not a bare PWA install, not a separate React Native
-    codebase). Explicit user requirement, verbatim concern: the mobile
-    experience must be properly responsive, not "the desktop layout just
-    doesn't fit on a small screen" — every screen needs a real mobile-first
-    pass (tables/wide layouts in particular), not merely wrapped.
-  - **Offline scope**: full offline-first — data entry (invoices, orders,
-    GRNs, etc.) must work with no connectivity at all, syncing to Supabase
-    once back online. This is the deep, hard version (local database +
-    background sync + conflict handling), explicitly chosen over
-    read-only PWA caching.
-  - **SEO**: the public landing page (Phase 0) needs a full SEO pass —
-    metadata, sitemap/robots (already scaffolded), structured data,
-    performance.
-  - Sequencing, per explicit user instruction: nothing in this phase starts
-    until the functional roadmap above (Phase 1.x through Phase 8) is
-    complete.
+- **Phase 9 — Offline-first + Desktop + Mobile + SEO**: decisions locked in
+  with the user so this doesn't need re-litigating later; started only once
+  the full functional roadmap above (Phase 1.x through Phase 8) was
+  complete, per the user's own explicit sequencing instruction. Tackled in
+  dependency order — SEO first (small, isolated, no new architecture),
+  then offline-first (the hard architectural core), then the Tauri/
+  Capacitor wrappers last, since the user's own requirement is that they
+  provide genuine offline operation, not just a browser shortcut around
+  work the sync layer hasn't done yet.
+  - **SEO** ✅: the public landing page already had solid Phase 0 scaffolding
+    (title template, OpenGraph/Twitter metadata, a generated `opengraph-image`,
+    `sitemap.ts`/`robots.ts`) — this pass filled the three pieces still
+    missing: structured data, canonical URLs, and app icons/manifest.
+    **Structured data**: a `SoftwareApplication` + `FAQPage` JSON-LD block
+    on the landing page, built directly from the same `faqs` array already
+    rendered on the page (never a second, divergent copy of the same
+    content) — live-verified as valid JSON with all 12 FAQ entries present.
+    **Canonical URLs**: `alternates.canonical` added to the root layout
+    (`/`) and to `/login`/`/signup`. Adding per-page metadata to `/login`/
+    `/signup` required first fixing a real, pre-existing inconsistency:
+    both pages were `"use client"` components directly under `page.tsx`,
+    which cannot export `metadata` (a Next.js constraint, not a stylistic
+    choice) — every other route in this codebase already splits an
+    interactive client form out from a thin server `page.tsx` (e.g.
+    `products/new/page.tsx` + `ProductForm.tsx`); `/login`/`/signup` were
+    the only two routes that didn't follow it. Fixed by extracting
+    `LoginForm.tsx`/`SignUpForm.tsx` as client components and turning each
+    `page.tsx` into a server component with its own `title`/`description`/
+    `canonical` — bringing these two routes in line with the rest of the
+    codebase's own established pattern, not inventing a new one.
+    **Icons/manifest**: `app/icon.tsx` (512×512) and `app/apple-icon.tsx`
+    (180×180) generated via the same `ImageResponse` technique the existing
+    `opengraph-image.tsx` already used (matching its exact dark
+    background/wordmark styling, not a new visual identity), plus
+    `app/manifest.ts` (name/description drawn from the same copy already
+    used in the root layout's own metadata, `theme_color`/`background_color`
+    matching the OG image's existing `#09090b`, referencing the generated
+    `/icon` route rather than inventing separate static image assets).
+    **Performance**: audited, not modified — the landing page was already
+    a zero-client-JS server component (the FAQ's expand/collapse uses
+    native `<details>`, no JS needed) with self-hosted `next/font` (no
+    render-blocking Google Fonts request) and no `<img>` elements to
+    optimize; nothing needed changing here, a real finding worth recording
+    rather than manufacturing busywork. Live-verified via `next build` +
+    a local production server: `/manifest.webmanifest`, `/icon`,
+    `/apple-icon` all generate correctly and are linked in `<head>`; the
+    JSON-LD block parses as valid JSON with the expected `@graph` shape;
+    `/login`/`/signup` render their own correct `<title>`/canonical tags
+    and (as a byproduct of the client/server split, not the goal of it)
+    now prerender statically instead of needing a dynamic render. Full
+    regression confirmed: `tsc --noEmit`, lint, and the full vitest suite
+    (113 tests across 20 files, all skip as expected with no service-role
+    key in this sandbox) all still pass clean, and `next build`'s route
+    table is otherwise unchanged.
+  - **Offline-first, Desktop (Tauri), Mobile (Capacitor)**: not yet started.
+    - **Desktop**: Tauri (not Electron) — lighter, lower resource use, and
+      explicitly chosen for genuine offline operation, not just a browser
+      shortcut.
+    - **Mobile**: Capacitor wrapper around the same Next.js app, published
+      to Play Store (not a bare PWA install, not a separate React Native
+      codebase). Explicit user requirement, verbatim concern: the mobile
+      experience must be properly responsive, not "the desktop layout just
+      doesn't fit on a small screen" — every screen needs a real
+      mobile-first pass (tables/wide layouts in particular), not merely
+      wrapped.
+    - **Offline scope**: full offline-first — data entry (invoices, orders,
+      GRNs, etc.) must work with no connectivity at all, syncing to
+      Supabase once back online. This is the deep, hard version (local
+      database + background sync + conflict handling), explicitly chosen
+      over read-only PWA caching.

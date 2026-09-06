@@ -22,6 +22,9 @@ export const metadata: Metadata = {
   },
   description:
     "Stonevora is a multi-tenant ERP for marble, granite, natural stone and tile businesses — from trading and showrooms to factory production, fabrication and tile manufacturing.",
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     title: "Stonevora — ERP for Marble, Granite, Stone & Tile Businesses",
     description:

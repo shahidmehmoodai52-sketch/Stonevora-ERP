@@ -107,9 +107,42 @@ const faqs = [
   },
 ];
 
+// Structured data for search engines -- built directly from the same content
+// rendered on the page (the faqs array above), never a separate, divergent
+// copy. SoftwareApplication + FAQPage are the two schema.org types that
+// actually apply here; no "offers"/pricing data exists to claim, so that
+// field is omitted rather than invented.
+function structuredData() {
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        name: "Stonevora",
+        applicationCategory: "BusinessApplication",
+        operatingSystem: "Web",
+        description:
+          "Stonevora is a multi-tenant ERP for marble, granite, natural stone and tile businesses — from trading and showrooms to factory production, fabrication and tile manufacturing.",
+      },
+      {
+        "@type": "FAQPage",
+        mainEntity: faqs.map((item) => ({
+          "@type": "Question",
+          name: item.q,
+          acceptedAnswer: { "@type": "Answer", text: item.a },
+        })),
+      },
+    ],
+  };
+}
+
 export function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col bg-white text-zinc-900 dark:bg-black dark:text-zinc-50">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData()) }}
+      />
       <Header />
       <main className="flex-1">
         <Hero />
