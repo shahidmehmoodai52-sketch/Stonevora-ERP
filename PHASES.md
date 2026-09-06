@@ -797,7 +797,115 @@ verified before the next begins.
   Automated regression coverage added in
   `tests/rls/phase7-scanning-and-stocktake.test.ts`, mirroring every
   live-verified path above.
-- **Phase 8 — Reporting/Dashboards**: cross-module analytics.
+- **Phase 8 — Reporting/Dashboards** ✅: eight cross-module reporting RPCs,
+  scoped per the same explicit decision Phase 7 made — backend/data layer
+  this round, live-SQL-verified like every other phase; the actual
+  dashboard UI (charts, KPI tiles) is a separate, later frontend pass, and
+  every RPC here already returns exactly the rows such a screen would
+  render directly. **No new permission resource**: every report reuses the
+  resource that already owns its subject matter and the existing
+  `view`/`view_cost`/`view_financial` action split from Phase 0's own
+  design — sales performance (`get_sales_summary`, `get_top_customers`,
+  `get_top_products`) under `sales.view`; inventory
+  (`get_inventory_valuation`) under `product.view_cost` since unit cost is
+  exactly the class of field `products_secure` already redacts; low stock
+  (`get_low_stock_report`) under `warehouse.view` since only quantities,
+  not cost, are exposed; receivables/payables aging under
+  `sales.view_financial`/`purchasing.view_financial` (matching how Phase 6
+  already gates P&L/Balance Sheet); and the unifying `get_dashboard_summary`
+  under `accounting.view_financial`, the same resource/action Phase 6
+  already uses for company-wide financial figures. **Branch scoping follows
+  the underlying data, not a blanket rule**: sales/receivables/dashboard
+  reports take a required `p_branch_id` (matching Phase 6/7's own "single
+  branch, not an unverified cross-branch aggregate" precedent, since
+  `sales_orders`/`sales_invoices` are branch-scoped tables); inventory
+  valuation and low-stock are deliberately tenant-wide with **no** branch
+  parameter — `inventory_stock`/`inventory_batches`/`inventory_units` RLS
+  is itself tenant-wide only (confirmed live against their own 0009
+  policies), so a report over them can't be branch-scoped without
+  inventing a scoping dimension the underlying tables don't have. Payables
+  aging is likewise tenant-wide for a real, pre-existing structural reason:
+  `purchase_invoices` carries no `branch_id` column at all — noted since
+  Phase 6's own research, and still with no creation path in the app —
+  documented here as an honest, acknowledged gap rather than either
+  fabricating a branch dimension or skipping the report. One small,
+  additive schema change: `products.reorder_point` (nullable) — the
+  low-stock report needs a threshold to compare against, and none existed;
+  never invented as a computed default, only ever read back as whatever
+  the tenant explicitly set, so a product with no threshold set is
+  silently and correctly excluded rather than flagged against a guessed
+  number. `get_dashboard_summary` reads revenue/COGS from
+  `get_profit_and_loss` (Phase 6) internally rather than re-deriving them
+  from source tables a second time, so the dashboard summary can never
+  disagree with the P&L report itself; its `low_stock_count` is computed
+  inline rather than by calling `get_low_stock_report` directly, since that
+  RPC carries its own separate `warehouse.view` gate distinct from
+  `get_dashboard_summary`'s own `accounting.view_financial` gate — calling
+  it from inside would make a caller with only the latter (a plausible
+  finance-only role) fail the whole summary on a permission it was never
+  meant to need for one sub-count, a mismatch caught and designed around
+  before this RPC was ever applied.
+  **A real bug was found and fixed during this phase's own live
+  verification**: `get_inventory_valuation`/`get_low_stock_report` both
+  declare `product_id`/`qty_on_hand` as `returns table (...)` output
+  columns — which plpgsql implicitly turns into function-body variables of
+  those exact names — and their internal per-source subqueries
+  (`inventory_stock`/`inventory_batches`/`inventory_units`) reference bare
+  `product_id`/`qty_on_hand` columns that collide with those variables,
+  producing `column reference "product_id" is ambiguous` the first time
+  either RPC was actually called. Fixed by table-qualifying every such
+  reference (e.g. `inventory_stock.product_id`, not bare `product_id`) in
+  both functions' subqueries; re-verified live afterward that both return
+  correct rows. (`get_dashboard_summary`'s own inline low-stock subquery
+  was independently checked and has no such collision — its output columns
+  are `total_revenue`/`total_cogs`/etc., none of which shadow `product_id`
+  or `qty_on_hand`.)
+  Live-verified: a full purchase-to-cash + sale-to-cash trading loop (GRN
+  receipt of 100 units at cost 20 = $2000; a 60-unit sale at 30 = $1800
+  revenue, dropping on-hand to 40 — deliberately below a 50-unit
+  `reorder_point` set on the test product; a partial $700 customer receipt
+  against a 45-days-past-due invoice; a manually-inserted, partially-paid
+  $2000 purchase invoice 65 days past due) checked against every one of
+  the 8 report RPCs, every figure hand-computed and matched exactly:
+  `get_sales_summary` (1 order, 1 invoice, $1800 revenue),
+  `get_top_customers`/`get_top_products` (correct single row each),
+  `get_inventory_valuation` (40 units × $20 avg_cost = $800),
+  `get_low_stock_report` (the test product flagged with a shortfall of 10,
+  a second product with no `reorder_point` set correctly excluded no
+  matter its own on-hand quantity), `get_receivables_aging` ($1100
+  outstanding correctly bucketed into days_31_60),
+  `get_payables_aging` ($1500 outstanding correctly bucketed into
+  days_61_90), and `get_dashboard_summary` (revenue/COGS/gross-profit
+  cross-verified byte-for-byte against `get_profit_and_loss` directly,
+  open sales/purchase order counts, outstanding receivables/payables, and
+  low-stock count all correct). Branch-scoping rejection verified on all
+  five branch-scoped RPCs (`get_sales_summary`, `get_top_customers`,
+  `get_top_products`, `get_receivables_aging`, `get_dashboard_summary`)
+  using a Branch-A-restricted Accountant-role user called against Branch
+  B, with the same user's call against their own Branch A confirmed to
+  still succeed. Permission-denial rejection verified on all four
+  `view_financial`/`view_cost`-gated RPCs using a Viewer-role user, each
+  producing the exact expected `Missing permission: <resource>.<action>`
+  message (`product.view_cost`, `sales.view_financial`,
+  `purchasing.view_financial`, `accounting.view_financial`), while
+  confirming the same Viewer is correctly still allowed to call the
+  `view`-gated reports (`get_sales_summary`, `get_low_stock_report`).
+  Anonymous access confirmed blocked at the grant level
+  (`revoke execute ... from public, anon`) independent of the in-body
+  permission check, on a representative RPC. Security-advisor sweep
+  returned only the same expected, intentional
+  `authenticated_security_definer_function_executable` pattern already
+  accepted for every prior integrity RPC (including the 8 new ones from
+  this phase) plus one pre-existing, unrelated `auth_leaked_password_protection`
+  finding — zero new or unexpected findings. Full regression confirmed:
+  this phase's own trading-loop setup exercised `post_goods_receipt`,
+  `confirm_sales_order`, `dispatch_delivery`, and
+  `generate_sales_invoice_from_delivery` live end to end with no
+  modifications to any of them (Phase 8 adds only new functions and one
+  new nullable column), and `get_profit_and_loss` (Phase 6) was called
+  directly and cross-checked. Automated regression coverage added in
+  `tests/rls/phase8-reporting-dashboards.test.ts`, mirroring every
+  live-verified path above.
 - **Phase 9 — Offline-first + Desktop + Mobile + SEO** (deferred until every
   functional phase above is complete; decisions locked in with the user so
   this doesn't need re-litigating later):

@@ -2249,6 +2249,7 @@ export type Database = {
           pattern_id: string | null
           purchase_uom_id: string | null
           qr_code_value: string | null
+          reorder_point: number | null
           sales_uom_id: string | null
           sku: string
           standard_margin_pct: number | null
@@ -2280,6 +2281,7 @@ export type Database = {
           pattern_id?: string | null
           purchase_uom_id?: string | null
           qr_code_value?: string | null
+          reorder_point?: number | null
           sales_uom_id?: string | null
           sku: string
           standard_margin_pct?: number | null
@@ -2311,6 +2313,7 @@ export type Database = {
           pattern_id?: string | null
           purchase_uom_id?: string | null
           qr_code_value?: string | null
+          reorder_point?: number | null
           sales_uom_id?: string | null
           sku?: string
           standard_margin_pct?: number | null
@@ -5800,6 +5803,59 @@ export type Database = {
           name: string
         }[]
       }
+      get_dashboard_summary: {
+        Args: {
+          p_branch_id: string
+          p_end_date: string
+          p_start_date: string
+          p_tenant_id: string
+        }
+        Returns: {
+          gross_profit: number
+          low_stock_count: number
+          open_purchase_orders: number
+          open_sales_orders: number
+          outstanding_payables: number
+          outstanding_receivables: number
+          total_cogs: number
+          total_revenue: number
+        }[]
+      }
+      get_inventory_valuation: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          name: string
+          product_id: string
+          qty_on_hand: number
+          sku: string
+          total_value: number
+          tracking_mode: Database["public"]["Enums"]["inventory_tracking_mode"]
+        }[]
+      }
+      get_low_stock_report: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          name: string
+          product_id: string
+          qty_on_hand: number
+          reorder_point: number
+          shortfall: number
+          sku: string
+        }[]
+      }
+      get_payables_aging: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          current_amount: number
+          days_1_30: number
+          days_31_60: number
+          days_61_90: number
+          days_over_90: number
+          supplier_id: string
+          supplier_name: string
+          total_outstanding: number
+        }[]
+      }
       get_profit_and_loss: {
         Args: {
           p_branch_id: string
@@ -5813,6 +5869,64 @@ export type Database = {
           amount: number
           code: string
           name: string
+        }[]
+      }
+      get_receivables_aging: {
+        Args: { p_branch_id: string; p_tenant_id: string }
+        Returns: {
+          current_amount: number
+          customer_id: string
+          customer_name: string
+          days_1_30: number
+          days_31_60: number
+          days_61_90: number
+          days_over_90: number
+          total_outstanding: number
+        }[]
+      }
+      get_sales_summary: {
+        Args: {
+          p_branch_id: string
+          p_end_date: string
+          p_start_date: string
+          p_tenant_id: string
+        }
+        Returns: {
+          avg_invoice_value: number
+          invoice_count: number
+          order_count: number
+          total_revenue: number
+        }[]
+      }
+      get_top_customers: {
+        Args: {
+          p_branch_id: string
+          p_end_date: string
+          p_limit?: number
+          p_start_date: string
+          p_tenant_id: string
+        }
+        Returns: {
+          customer_id: string
+          customer_name: string
+          invoice_count: number
+          total_revenue: number
+        }[]
+      }
+      get_top_products: {
+        Args: {
+          p_branch_id: string
+          p_end_date: string
+          p_limit?: number
+          p_start_date: string
+          p_tenant_id: string
+        }
+        Returns: {
+          name: string
+          product_id: string
+          qty_sold: number
+          sku: string
+          total_revenue: number
         }[]
       }
       has_branch_access: {
