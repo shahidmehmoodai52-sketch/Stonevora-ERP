@@ -1149,16 +1149,65 @@ verified before the next begins.
       defaults) — no image-generation tooling was available in this
       sandbox to produce a real multi-resolution Stonevora app icon;
       noted here rather than left unmentioned.
-  - **Mobile (Capacitor)**: not yet started.
-    - Capacitor wrapper around the same Next.js app, published to Play
-      Store (not a bare PWA install, not a separate React Native
-      codebase). Explicit user requirement, verbatim concern: the mobile
-      experience must be properly responsive, not "the desktop layout just
-      doesn't fit on a small screen" — every screen needs a real
-      mobile-first pass (tables/wide layouts in particular), not merely
-      wrapped. The same standalone-server + local-sidecar architecture
-      built for Tauri above does not carry over directly (Capacitor apps
-      don't bundle an arbitrary Node process the way a Tauri sidecar can);
-      expect this to need its own research into how Capacitor projects
-      serve a dynamic server-rendered app offline, rather than assuming
-      the desktop approach transfers unchanged.
+  - **Mobile (Capacitor)** ✅ (scope explicitly agreed with the user before
+    building: a real, buildable native shell pointed at the hosted app —
+    not yet the deep offline architecture): asked directly, since the
+    Tauri sidecar approach genuinely does not carry over — Capacitor apps
+    don't bundle an arbitrary local Node process the way a Tauri sidecar
+    can, so "just do what desktop did" was not an honest option here. Two
+    real alternatives existed (bundle-a-local-shell was ruled out by that
+    same constraint; the real fork was between a client-rendered-SPA
+    rebuild of the offline-critical screens now, vs. this shell now and
+    offline as a later, separately-scoped decision); the user chose the
+    latter. Published to the Play Store (not a bare PWA install, not a
+    separate React Native codebase), matching the original locked-in
+    decision.
+    - **`capacitor.config.ts`**: `appId com.stonevora.erp` (matching the
+      Tauri shell's own `identifier` for consistency), `server.url` driven
+      by `NEXT_PUBLIC_SITE_URL` — the same env var and fallback pattern
+      `app/sitemap.ts`/`app/robots.ts` already use, not a new convention.
+      `capacitor-www/index.html` is a minimal "Loading…" placeholder, never
+      the real app; `server.url` is set in every case, so it's only ever
+      seen for the brief moment before that navigation completes.
+    - **`android/`**: a real native Android Studio/Gradle project, added
+      via `cap add android` and kept in sync via `cap sync android` (both
+      run for real, not hand-assembled) — Kotlin/Gradle source is
+      committed, matching standard Capacitor project convention;
+      Capacitor's own generated `.gitignore` inside `android/` already
+      correctly excludes build outputs, `local.properties`, and generated
+      config/asset copies.
+    - **Explicit, honest scope boundary — genuine offline mobile
+      operation is not attempted here**: the user's own choice, made with
+      the tradeoff stated plainly rather than half-built. The path there
+      (deferred, not designed in detail): a client-rendered build of the
+      offline-critical screens — the same sales-order-entry flow already
+      proven on desktop is the natural first candidate — talking to
+      Supabase directly and reusing `lib/offline`'s outbox/sync engine,
+      bundled as Capacitor's local `webDir` instead of a remote
+      `server.url`. A real architectural fork from the rest of this
+      (server-rendered) app, correctly left for its own separately-scoped
+      pass rather than assumed away.
+    - **Verification, honestly bounded — same class of constraint as the
+      other two Phase 9 pieces, confirmed the same way (a live attempt,
+      not an assumption)**: `cap init`/`cap add android`/`cap sync android`
+      all ran for real and were inspected — confirmed `server.url`/
+      `cleartext`/`appId` correctly propagated into
+      `android/app/src/main/assets/capacitor.config.json`, the file the
+      native shell actually reads at runtime, and confirmed `applicationId`/
+      `namespace` in `android/app/build.gradle` are `com.stonevora.erp`
+      throughout (only Capacitor's own generic instrumented-test-stub
+      files keep its template's placeholder Java package, cosmetic and
+      unrelated to the real app). A full native build was then genuinely
+      attempted, not skipped: `./gradlew tasks` — the Gradle wrapper itself
+      downloaded and ran correctly, but resolving the Android Gradle Plugin
+      failed with `Could not GET
+      'https://dl.google.com/dl/android/maven2/...'. Received status code
+      403 from server: Forbidden` — this sandbox's own egress policy again
+      (the same class of restriction that blocked the offline-first piece's
+      Supabase connection and would also block installing the Android SDK
+      itself, which was never attempted for the same reason). A real
+      environment constraint, not a property of the Capacitor config —
+      confirmed live rather than assumed. A follow-up with normal internet
+      access (a real machine, or a CI runner with the Android SDK
+      preinstalled) should run `./gradlew assembleDebug` and an emulator
+      smoke test before this ships to a device.

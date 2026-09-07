@@ -18,6 +18,10 @@ const eslintConfig = defineConfig([
     // plus Cargo's own target/ -- neither is source, both are already
     // gitignored, but ESLint has no other reason to know that.
     "src-tauri/**",
+    // The Capacitor Android native project -- Kotlin/Gradle source plus
+    // Cordova-compat plugin shims Capacitor generates, not this app's own
+    // TypeScript.
+    "android/**",
   ]),
 ]);
 
