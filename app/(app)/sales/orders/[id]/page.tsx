@@ -127,6 +127,7 @@ export default async function SalesOrderDetailPage({
           </h2>
           <NewDeliveryForm
             action={createDeliveryAction.bind(null, id)}
+            salesOrderId={id}
             defaultBranchId={so.branch_id}
             defaultWarehouseId={so.warehouse_id ?? ""}
             lines={deliverableLines.map((l) => ({

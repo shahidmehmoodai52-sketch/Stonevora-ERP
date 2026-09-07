@@ -23,7 +23,12 @@ export function NewPurchaseOrderForm({
   currencies: Option[];
 }) {
   return (
-    <ActionForm action={action} submitLabel="Create purchase order" className="flex flex-col gap-4 max-w-3xl">
+    <ActionForm
+      action={action}
+      submitLabel="Create purchase order"
+      className="flex flex-col gap-4 max-w-3xl"
+      offlineActionKey="createPurchaseOrder"
+    >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">PO number</label>

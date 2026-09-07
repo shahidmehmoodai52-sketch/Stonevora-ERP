@@ -16,7 +16,10 @@ export function GenerateInvoiceForm({
       action={action.bind(null, deliveryId, salesOrderId)}
       submitLabel="Generate invoice"
       className="flex items-end gap-2"
+      offlineActionKey="generateInvoice"
     >
+      <input type="hidden" name="__deliveryId" value={deliveryId} />
+      <input type="hidden" name="__salesOrderId" value={salesOrderId} />
       <div className="flex flex-col gap-1">
         <input name="invoiceNumber" required className="input w-32" placeholder="INV-0001" />
       </div>

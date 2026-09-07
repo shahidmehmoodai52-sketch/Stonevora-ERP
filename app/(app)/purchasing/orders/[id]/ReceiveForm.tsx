@@ -17,19 +17,27 @@ type PoLine = {
 
 export function ReceiveForm({
   action,
+  purchaseOrderId,
   defaultBranchId,
   warehouses,
   locations,
   poLines,
 }: {
   action: (formData: FormData) => Promise<SimpleActionResult>;
+  purchaseOrderId: string;
   defaultBranchId: string;
   warehouses: Warehouse[];
   locations: Location[];
   poLines: PoLine[];
 }) {
   return (
-    <ActionForm action={action} submitLabel="Post goods receipt" className="flex flex-col gap-4">
+    <ActionForm
+      action={action}
+      submitLabel="Post goods receipt"
+      className="flex flex-col gap-4"
+      offlineActionKey="createGoodsReceipt"
+    >
+      <input type="hidden" name="__purchaseOrderId" value={purchaseOrderId} />
       <input type="hidden" name="branchId" value={defaultBranchId} />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1">

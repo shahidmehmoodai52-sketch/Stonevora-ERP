@@ -98,6 +98,7 @@ export default async function PurchaseOrderDetailPage({
           <h2 className="mb-3 text-sm font-semibold text-zinc-900 dark:text-zinc-50">Receive goods (GRN)</h2>
           <ReceiveForm
             action={createGoodsReceiptAction.bind(null, id)}
+            purchaseOrderId={id}
             defaultBranchId={po.branch_id}
             warehouses={warehouses ?? []}
             locations={(locations ?? []).map((l) => ({ id: l.id, code: l.code, path: l.path }))}

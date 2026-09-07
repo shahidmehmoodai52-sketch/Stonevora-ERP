@@ -1067,6 +1067,49 @@ verified before the next begins.
     - **New dependency**: `dexie` (runtime) and `fake-indexeddb` (dev/test
       only) — both small, dependency-free, widely used libraries; no new
       backend/Supabase surface, no schema changes.
+  - **Offline-first — extended to the rest of the "invoices, orders, GRNs"
+    trading loop** ✅: the mechanical follow-up flagged above, done —
+    `offlineActionKey` wired onto the other three forms the user's own
+    stated requirement named by name: `NewPurchaseOrderForm.tsx`
+    (`createPurchaseOrder`), `ReceiveForm.tsx` (`createGoodsReceipt`, the
+    canonical warehouse-floor scenario a GRN represents), `NewDeliveryForm.tsx`
+    (`createDelivery`), and `GenerateInvoiceForm.tsx` (`generateInvoice`) —
+    alongside the sales order form already wired. Deliberately still not
+    extended to settings/admin screens (branches, warehouses, users,
+    suppliers, customers, price lists, product master) — unchanged
+    reasoning from the original pass: no realistic "no signal" scenario for
+    office-side setup screens, and silently deferring one of those is the
+    wrong default.
+    **One real design gap closed in the process**: three of these four
+    actions take an extra id bound ahead of `formData` on the online path
+    (e.g. `createDeliveryAction(salesOrderId, formData)`, wired via
+    `.bind(null, id)` on the Server Action reference) — a `.bind()`'d
+    closure doesn't survive being serialized into the outbox and read back
+    after a reload, so replaying a queued item purely by its stored
+    `actionKey` had no way to recover that id. Fixed by having the id also
+    travel as a hidden form field (`__purchaseOrderId`/`__salesOrderId`/
+    `__deliveryId` — double-underscore-prefixed, confirmed by grep to
+    collide with no field name any of these actions already reads) and
+    giving `actionRegistry.ts` a small wrapper per such action that pulls
+    the id back out of the submitted `FormData` before calling the real
+    action positionally — the exact same function, called the exact same
+    way, whether it runs live or is replayed later. `generateInvoice` needs
+    two such ids (`deliveryId` and `salesOrderId`); `createSalesOrder`/
+    `createPurchaseOrder` need none, since neither takes a bound id at all.
+    No changes to any of the four underlying Server Actions themselves —
+    this is purely additive wiring around them, so no live Supabase
+    re-verification was needed (nothing server-side changed) beyond
+    confirming the hidden-field names don't collide.
+    Verified: a new `tests/offline/actionRegistry.test.ts` (4 tests, real
+    Server Actions mocked since they import `next/headers`-dependent
+    Supabase clients unusable outside a request context) confirms each
+    wrapper extracts its id(s) from the hidden field(s) and calls the real
+    action with the correct positional arguments — `createGoodsReceipt`,
+    `createDelivery`, `generateInvoice` (two ids), and the pass-through
+    case (`createSalesOrder` receiving `formData` alone, unchanged). Full
+    regression: `tsc --noEmit`, lint, and the full vitest suite (126 tests
+    across 22 files — 13 real, 113 skipped as expected) all pass clean, and
+    `next build`'s route table is unchanged.
   - **Desktop (Tauri)** ✅ (Linux target only — see verification note): a
     real native shell that serves the app's own UI from disk, not the
     network — genuine offline operation, not a browser window pointed at a

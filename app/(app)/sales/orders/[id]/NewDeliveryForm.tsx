@@ -6,17 +6,25 @@ type Line = { id: string; productId: string; label: string; remaining: number };
 
 export function NewDeliveryForm({
   action,
+  salesOrderId,
   defaultBranchId,
   defaultWarehouseId,
   lines,
 }: {
   action: (formData: FormData) => Promise<SimpleActionResult>;
+  salesOrderId: string;
   defaultBranchId: string;
   defaultWarehouseId: string;
   lines: Line[];
 }) {
   return (
-    <ActionForm action={action} submitLabel="Dispatch delivery" className="flex flex-col gap-4">
+    <ActionForm
+      action={action}
+      submitLabel="Dispatch delivery"
+      className="flex flex-col gap-4"
+      offlineActionKey="createDelivery"
+    >
+      <input type="hidden" name="__salesOrderId" value={salesOrderId} />
       <input type="hidden" name="branchId" value={defaultBranchId} />
       <input type="hidden" name="warehouseId" value={defaultWarehouseId} />
       <div className="flex flex-col gap-1 max-w-xs">
