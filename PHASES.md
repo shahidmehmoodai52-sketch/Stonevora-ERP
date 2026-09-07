@@ -1067,15 +1067,98 @@ verified before the next begins.
     - **New dependency**: `dexie` (runtime) and `fake-indexeddb` (dev/test
       only) — both small, dependency-free, widely used libraries; no new
       backend/Supabase surface, no schema changes.
-  - **Desktop (Tauri), Mobile (Capacitor)**: not yet started.
-    - **Desktop**: Tauri (not Electron) — lighter, lower resource use, and
-      explicitly chosen for genuine offline operation, not just a browser
-      shortcut. A natural place to add the app-shell/RSC precaching the
-      offline-first foundation above deliberately left out of scope.
-    - **Mobile**: Capacitor wrapper around the same Next.js app, published
-      to Play Store (not a bare PWA install, not a separate React Native
+  - **Desktop (Tauri)** ✅ (Linux target only — see verification note): a
+    real native shell that serves the app's own UI from disk, not the
+    network — genuine offline operation, not a browser window pointed at a
+    hosted URL (which is exactly the "browser shortcut" this locked-in
+    decision explicitly rejected). Scaffolded via `tauri init` into
+    `src-tauri/`, then built out into the architecture this requirement
+    actually demands, since this app is a dynamic Next.js server (Server
+    Components, Server Actions, cookie-based auth/tenant resolution) —
+    **not** a static site, so it cannot be exported to flat files the way a
+    typical Tauri frontend is bundled:
+    - **`next.config.ts`**: `output: "standalone"` — Next's own supported
+      mode for a self-contained server bundle (`server.js` + its own
+      minimal `node_modules`), harmless for the existing Vercel deployment
+      path (Vercel manages its own output regardless of this setting).
+    - **`scripts/prepare-tauri-server.mjs`**: assembles that standalone
+      output plus `.next/static` and `public/` (Next's own documented
+      standalone-deployment layout — the standalone build deliberately
+      excludes static assets) into `src-tauri/resources/server/`, which
+      `tauri.conf.json`'s `bundle.resources` bundles into the shipped app.
+    - **`scripts/prepare-tauri-node-sidecar.mjs`**: copies a Node.js binary
+      into `src-tauri/binaries/node-<target-triple>`, Tauri's sidecar
+      naming convention (`bundle.externalBin`). Documented, not built: this
+      copies whatever `node` is on the *build* machine's PATH, correct
+      for building on the one platform this session can actually target
+      and verify (`x86_64-unknown-linux-gnu`), but a real release pipeline
+      for other platforms should instead download the official prebuilt
+      Node.js binary per target triple rather than depend on the build
+      machine's own installed version.
+    - **`src-tauri/src/lib.rs`**: in a release build, the main window is
+      created but held `visible: false`; `setup()` spawns the bundled
+      `node server.js` sidecar (via `tauri-plugin-shell`'s `Command::sidecar`
+      — a pure Rust-to-Rust call, not a webview→backend IPC call, so it
+      needs no capability/permission grant, confirmed by reading
+      `tauri-plugin-shell`'s own source in the local Cargo registry cache
+      rather than guessing), polls `127.0.0.1:17423` until it actually
+      accepts a connection, then navigates the window to that local URL and
+      shows it — so there is never a flash of empty/default content, and a
+      slow-starting server never leaves the user looking at nothing (a
+      timeout falls back to showing the window regardless, logging the
+      failure). In `tauri dev`, none of this runs — Tauri's own tested
+      default flow (`devUrl` pointing at `next dev`) is untouched, and the
+      window is simply shown immediately.
+    - **A real bug found and fixed during this piece's own live
+      verification**: the first version let Tauri drop the spawned
+      `CommandChild` handle, meaning the bundled server outlived the app —
+      confirmed by launching the actual built binary (see below), closing
+      it, and finding `next-server` still running as an orphan process.
+      Fixed by tracking the child in managed state and killing it from a
+      `RunEvent::ExitRequested`/`RunEvent::Exit` handler — the documented,
+      correct Tauri mechanism for app-quit cleanup. Documented limitation,
+      not silently assumed away: this handles Tauri's own quit lifecycle
+      (window close, `app.exit()`), not a raw external `SIGKILL` sent
+      directly to the process bypassing the app's event loop entirely —
+      confirmed by testing both: a `RunEvent`-driven path cannot be
+      verified against an OS signal because a signal never reaches it in
+      the first place; this is a standard, shared limitation of processes
+      that spawn helper subprocesses, not unique to this implementation.
+    - **Verification — live, not just a compile check**: `cargo check` and
+      a full `cargo build --release` both succeeded (confirming every Rust
+      API call — `ShellExt::sidecar`, `CommandChild`, `WebviewWindow
+      ::navigate`, `Manager::path().resource_dir()` — against the real
+      crate versions, not assumed from memory), and `tauri build
+      --no-bundle` correctly assembled the sidecar binary and resources
+      next to the built executable. The built app was then actually
+      **launched** under `Xvfb` (a virtual X server, since this sandbox has
+      no real display) — confirmed all three expected processes running
+      together (`./app`, `WebKitWebProcess`/`WebKitNetworkProcess`, and
+      `next-server`), and a direct `curl` to `http://127.0.0.1:17423/login`
+      returned the real, correctly-rendered login page HTML. This is
+      substantially stronger verification than the offline-first piece
+      could get (blocked entirely by this sandbox's egress policy) — this
+      one runs entirely on `127.0.0.1`, no external network involved, so
+      the sandbox's own restriction never applies to it. What remains
+      genuinely unverified in this sandbox: the actual rendered window
+      content (no screenshot tooling available under bare Xvfb, and no
+      window manager to test a real UI-driven close), and every non-Linux
+      target (macOS/Windows builds and their own bundlers/installers) —
+      this session can only build and run for the one platform it has.
+      Icons are still Tauri's own generic placeholder set (`tauri init`'s
+      defaults) — no image-generation tooling was available in this
+      sandbox to produce a real multi-resolution Stonevora app icon;
+      noted here rather than left unmentioned.
+  - **Mobile (Capacitor)**: not yet started.
+    - Capacitor wrapper around the same Next.js app, published to Play
+      Store (not a bare PWA install, not a separate React Native
       codebase). Explicit user requirement, verbatim concern: the mobile
       experience must be properly responsive, not "the desktop layout just
       doesn't fit on a small screen" — every screen needs a real
       mobile-first pass (tables/wide layouts in particular), not merely
-      wrapped.
+      wrapped. The same standalone-server + local-sidecar architecture
+      built for Tauri above does not carry over directly (Capacitor apps
+      don't bundle an arbitrary Node process the way a Tauri sidecar can);
+      expect this to need its own research into how Capacitor projects
+      serve a dynamic server-rendered app offline, rather than assuming
+      the desktop approach transfers unchanged.

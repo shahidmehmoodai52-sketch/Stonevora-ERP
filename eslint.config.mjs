@@ -12,6 +12,12 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // The Tauri desktop shell's build outputs -- a bundled copy of this
+    // app's own compiled JS (server.js, .next/static, node_modules) that
+    // scripts/prepare-tauri-server.mjs assembles under src-tauri/resources,
+    // plus Cargo's own target/ -- neither is source, both are already
+    // gitignored, but ESLint has no other reason to know that.
+    "src-tauri/**",
   ]),
 ]);
 
