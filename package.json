@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "tauri": "tauri",
-    "build:desktop": "node scripts/prepare-tauri-node-sidecar.mjs && next build && node scripts/prepare-tauri-server.mjs"
+    "build:desktop": "node scripts/prepare-tauri-node-sidecar.mjs && next build && node scripts/prepare-tauri-server.mjs",
+    "generate:app-icon": "node scripts/generate-app-icon-source.mjs && tauri icon src-tauri/app-icon-source.png"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.1",

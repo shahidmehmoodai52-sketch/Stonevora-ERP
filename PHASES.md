@@ -1188,10 +1188,22 @@ verified before the next begins.
       window manager to test a real UI-driven close), and every non-Linux
       target (macOS/Windows builds and their own bundlers/installers) —
       this session can only build and run for the one platform it has.
-      Icons are still Tauri's own generic placeholder set (`tauri init`'s
-      defaults) — no image-generation tooling was available in this
-      sandbox to produce a real multi-resolution Stonevora app icon;
-      noted here rather than left unmentioned.
+      **Real icons, closed as a same-session follow-up**: the placeholder
+      gap just above didn't need "image-generation tooling" this session
+      lacked — it needed the tooling already in the repo, reused.
+      `scripts/generate-app-icon-source.mjs` renders one 1024×1024 source
+      PNG via `next/og`'s `ImageResponse`, the exact same renderer (and the
+      exact same "S" wordmark/`#09090b` palette) `app/icon.tsx`,
+      `app/apple-icon.tsx`, and `app/opengraph-image.tsx` already use for
+      the web app — one visual identity, not a second one invented for
+      desktop. `npm run generate:app-icon` feeds that source through
+      `tauri icon`, which derives every platform's real icon set
+      (Windows `.ico`, macOS `.icns`, every PNG size, plus Android/iOS
+      variants for if Tauri mobile is ever pursued) from it — confirmed by
+      inspecting the generated `128x128.png` directly (a real rendered "S"
+      glyph, not a blank or broken image) and by re-running `cargo check`
+      afterward to confirm the rebuilt icon set doesn't break the build
+      Tauri's own `embed-resource`/bundler step depends on.
   - **Mobile (Capacitor)** ✅ (scope explicitly agreed with the user before
     building: a real, buildable native shell pointed at the hosted app —
     not yet the deep offline architecture): asked directly, since the
