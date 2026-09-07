@@ -960,10 +960,118 @@ verified before the next begins.
     (113 tests across 20 files, all skip as expected with no service-role
     key in this sandbox) all still pass clean, and `next build`'s route
     table is otherwise unchanged.
-  - **Offline-first, Desktop (Tauri), Mobile (Capacitor)**: not yet started.
+  - **Offline-first — foundation** ✅ (one flow proven end to end; extending
+    every other module's forms is a documented follow-up, not claimed done
+    here): the deep version the user asked for — a local outbox queue and
+    background sync, not read-only PWA caching — built as a layer *around*
+    the existing Server Actions architecture rather than a parallel write
+    path, so it adds zero new attack surface: every queued mutation still
+    runs through the exact same `requirePermission`-guarded Server Action
+    and RLS-scoped Supabase client as the online path, whether it executes
+    immediately or after a reconnect.
+    - **`lib/offline/db.ts`**: a small Dexie (IndexedDB) database with one
+      `outbox` table — each row is a captured form submission (`tenantId`,
+      `actionKey`, its `FormData` entries as `[string, string][]`, status,
+      error, attempt count, timestamp). `formDataToEntries` explicitly
+      rejects a `File` field rather than silently stringifying it to
+      `"[object File]"` — every offline-capable form in this app is
+      text/number/select only, so this is a real, enforced boundary, not a
+      gap waiting to be hit.
+    - **`lib/offline/actionRegistry.ts`**: maps a stable string key (e.g.
+      `"createSalesOrder"`) to the real, imported Server Action. A queued
+      outbox row stores the key, never the function itself — functions
+      aren't serializable, and a page reload while offline would lose a
+      closure-captured reference anyway. Replaying a queued item looks the
+      action up by key and calls it, so a reconnect runs literally the same
+      code path (permission check, RLS, business validation) the request
+      would have hit if the network had never dropped — nothing about the
+      write is duplicated, reimplemented, or bypassed for the offline case.
+    - **`lib/offline/sync.ts`**: `enqueueOfflineAction`, `drainOutbox`
+      (oldest-first, one tenant at a time, stops immediately if the network
+      drops again mid-drain), and `isNetworkError` — the check that tells
+      "the request never reached the server" (queue it) apart from "the
+      server ran it and rejected it on the merits" (surface the real error,
+      never silently retry a submission that can only fail identically). A
+      failed item is left in the outbox with its message, never dropped —
+      the same never-silently-drop discipline this codebase already applies
+      to every rejected business transaction, now applied to the sync queue
+      itself. A synced item is pruned on the same drain that synced it.
+    - **`lib/offline/OfflineProvider.tsx` + `OfflineStatusBadge.tsx`**:
+      mounted once in `(app)/layout.tsx` (scoped to one tenant), tracks
+      `navigator.onLine`/the `online`/`offline` window events, drains the
+      outbox on mount-if-online and on every reconnect, and renders a small
+      always-visible badge ("Offline — N queued" / "Syncing N queued
+      items…") — offline mode is silent plumbing otherwise, and a user who
+      submitted a form while offline needs to actually see it queued, not
+      wonder if it was lost.
+    - **`components/ActionForm.tsx`**: extended with an opt-in
+      `offlineActionKey` prop (existing forms are unaffected — omitting it
+      is the default, and most settings/admin screens deliberately don't
+      opt in: there's no realistic "no signal" scenario for them, and
+      silently deferring a permission/role change is the wrong default).
+      When set, a network failure — already offline at submit time, or the
+      connection drops mid-request — queues the exact submission instead of
+      surfacing a hard error, and the form shows "Saved offline — will sync
+      when back online" rather than the ordinary "Saved." A `redirect()`
+      thrown by a Server Action on its normal online-success path (this
+      codebase's existing pattern, e.g. `createSalesOrderAction`) is
+      unaffected — it isn't a `TypeError`, so it propagates through
+      unchanged exactly as it did before this change.
+    - **Proof of the whole path, not just the plumbing**: wired onto one
+      real, representative flow — creating a sales order
+      (`app/(app)/sales/orders/new/NewSalesOrderForm.tsx` now passes
+      `offlineActionKey="createSalesOrder"`) — chosen because it's exactly
+      the kind of field data entry the user's own stated concern was about.
+    - **Explicit, honest scope boundary**: this pass proves the *mutation*
+      path works offline for one flow; it does not give every other
+      module's create/edit forms the same `offlineActionKey` wiring (a
+      large, low-risk, mechanical extension of this same infrastructure —
+      not started here so it isn't claimed as done), and it does not
+      attempt offline *page loads* — a cold navigation to a route with zero
+      connectivity still needs the page's own Server Component data fetch
+      to succeed, which this pass doesn't change; that requires a service
+      worker precaching the app shell/RSC payloads, a separate, larger
+      piece of PWA engineering the Tauri/Capacitor wrappers will need
+      anyway and are a more natural place to add it.
+    - **Verification, honestly reported**: a real attempt was made to
+      prove this live end-to-end in a browser (log in, go offline via
+      Playwright's `context.setOffline(true)`, submit the sales order form,
+      confirm the "Saved offline" state and the badge, go back online,
+      confirm the outbox drains and the row lands in `sales_orders`) — this
+      is exactly the kind of live verification every other phase in this
+      project performed. It could not be completed: this sandbox's own
+      egress policy rejects direct outbound connections to `*.supabase.co`
+      (confirmed via a raw `curl` to the Supabase Auth health endpoint —
+      `CONNECT tunnel failed, response 403`, an explicit proxy policy
+      denial, not a flaky network blip), so neither the Next.js dev server
+      nor a browser running inside this sandbox can reach Supabase directly
+      — only the Supabase MCP tool channel can (a separate path outside
+      this container's own network, which is how every prior phase's live
+      SQL verification worked). This is a genuine environment constraint,
+      not a property of the offline code itself, and not something to
+      paper over: verification for this piece is therefore the automated
+      suite in `tests/offline/sync.test.ts` (9 tests against a real
+      `fake-indexeddb`-backed Dexie instance — enqueue, tenant-scoped
+      counts, replay-by-registry-key with the real `FormData` reconstructed
+      correctly, marking synced items pruned, marking server-rejected items
+      failed with their real error and left in place, an unknown action key
+      failing safely instead of throwing, tenant isolation during a drain,
+      oldest-first ordering, and a failed item's attempt count incrementing
+      on a later successful retry) plus `tsc --noEmit`/lint/`next build`
+      (all clean, route table unchanged) and a careful manual read-through
+      of the `ActionForm`/`OfflineProvider` wiring — not a live click-through,
+      and this entry says so rather than claiming one. A follow-up session
+      with unrestricted egress (or run from outside this sandbox) should
+      complete the live browser pass before this pattern is rolled out to
+      further forms.
+    - **New dependency**: `dexie` (runtime) and `fake-indexeddb` (dev/test
+      only) — both small, dependency-free, widely used libraries; no new
+      backend/Supabase surface, no schema changes.
+  - **Desktop (Tauri), Mobile (Capacitor)**: not yet started.
     - **Desktop**: Tauri (not Electron) — lighter, lower resource use, and
       explicitly chosen for genuine offline operation, not just a browser
-      shortcut.
+      shortcut. A natural place to add the app-shell/RSC precaching the
+      offline-first foundation above deliberately left out of scope.
     - **Mobile**: Capacitor wrapper around the same Next.js app, published
       to Play Store (not a bare PWA install, not a separate React Native
       codebase). Explicit user requirement, verbatim concern: the mobile
@@ -971,8 +1079,3 @@ verified before the next begins.
       doesn't fit on a small screen" — every screen needs a real
       mobile-first pass (tables/wide layouts in particular), not merely
       wrapped.
-    - **Offline scope**: full offline-first — data entry (invoices, orders,
-      GRNs, etc.) must work with no connectivity at all, syncing to
-      Supabase once back online. This is the deep, hard version (local
-      database + background sync + conflict handling), explicitly chosen
-      over read-only PWA caching.
