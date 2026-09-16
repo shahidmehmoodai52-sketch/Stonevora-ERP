@@ -71,7 +71,9 @@ export default async function SupplierDetailPage({
         action={recordSupplierPaymentAction.bind(null, id)}
         submitLabel="Record payment"
         className="flex flex-col gap-4 max-w-sm"
+        offlineActionKey="recordSupplierPayment"
       >
+        <input type="hidden" name="__supplierId" value={id} />
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Branch</label>
           <select name="branchId" required className="input">

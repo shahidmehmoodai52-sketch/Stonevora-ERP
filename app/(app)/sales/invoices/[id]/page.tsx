@@ -111,7 +111,9 @@ export default async function SalesInvoiceDetailPage({
             action={recordCustomerPaymentAction.bind(null, invoice.customers.id)}
             submitLabel="Record payment"
             className="flex flex-col gap-4 max-w-sm"
+            offlineActionKey="recordCustomerPayment"
           >
+            <input type="hidden" name="__customerId" value={invoice.customers.id} />
             <input type="hidden" name="salesInvoiceId" value={invoice.id} />
             <input type="hidden" name="branchId" value={invoice.branch_id} />
             <div className="flex flex-col gap-1">

@@ -1075,11 +1075,13 @@ verified before the next begins.
     canonical warehouse-floor scenario a GRN represents), `NewDeliveryForm.tsx`
     (`createDelivery`), and `GenerateInvoiceForm.tsx` (`generateInvoice`) —
     alongside the sales order form already wired. Deliberately still not
-    extended to settings/admin screens (branches, warehouses, users,
-    suppliers, customers, price lists, product master) — unchanged
-    reasoning from the original pass: no realistic "no signal" scenario for
-    office-side setup screens, and silently deferring one of those is the
-    wrong default.
+    extended to settings/admin and catalog/master-data screens (branches,
+    warehouses, users, supplier/customer master records, price lists,
+    product master) — unchanged reasoning from the original pass: no
+    realistic "no signal" scenario for office-side setup screens, and
+    silently deferring one of those is the wrong default. (The
+    supplier/customer *payment-recording* forms on those same detail pages
+    are a different, transactional case — see the next entry.)
     **One real design gap closed in the process**: three of these four
     actions take an extra id bound ahead of `formData` on the online path
     (e.g. `createDeliveryAction(salesOrderId, formData)`, wired via
@@ -1110,6 +1112,37 @@ verified before the next begins.
     regression: `tsc --noEmit`, lint, and the full vitest suite (126 tests
     across 22 files — 13 real, 113 skipped as expected) all pass clean, and
     `next build`'s route table is unchanged.
+  - **Offline-first — payment recording** ✅: a full audit of every
+    `ActionForm` usage in the app (16 total) turned up two genuinely
+    transactional forms the first extension pass missed — recording a
+    customer payment against an invoice
+    (`app/(app)/sales/invoices/[id]/page.tsx`) and recording a supplier
+    payment (`app/(app)/purchasing/suppliers/[id]/page.tsx`). Both are real
+    field/collections data entry (a payment received in person, recorded
+    wherever that happens to be), and "invoices" was one of the user's own
+    named examples — this was a real gap, not scope creep. Same pattern as
+    the trading-loop forms: `recordCustomerPaymentAction`/
+    `recordSupplierPaymentAction` each bind an id (`customerId`/
+    `supplierId`) ahead of `formData` on the online path, so each form now
+    also carries that id as a hidden `__customerId`/`__supplierId` field,
+    and `actionRegistry.ts` gained matching `recordCustomerPayment`/
+    `recordSupplierPayment` wrappers that extract it before calling the
+    real action. No changes to either underlying Server Action.
+    **That audit also confirmed there is nothing left to extend this
+    pattern to beyond catalog/admin screens**: this app's UI only covers
+    Phase 0/Phase 1 (Trading/Distribution) — every other phase (stock
+    adjustments/transfers/returns, Factory, Fabrication, Tile
+    Manufacturing, Showroom/Reservations, Accounting, QR/stocktake,
+    Reporting) was built backend/RPC-only by its own explicit scope
+    decision, with UI deferred; there is no stock-adjustment form, no
+    stocktake form, no reservation form, etc. to wire offline capability
+    onto, because none of those forms exist yet. Extending this pattern
+    further is therefore gated on building those screens in the first
+    place, not on more outbox/registry work.
+    Verified: two new tests in `tests/offline/actionRegistry.test.ts` (15
+    total across the two offline test files) confirm both wrappers extract
+    their id correctly; `tsc --noEmit`, lint, the full vitest suite, and
+    `next build` all pass clean.
   - **Desktop (Tauri)** ✅ (Linux target only — see verification note): a
     real native shell that serves the app's own UI from disk, not the
     network — genuine offline operation, not a browser window pointed at a

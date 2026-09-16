@@ -18,9 +18,14 @@ vi.mock("@/actions/purchasing", () => ({
   createPurchaseOrderAction: vi.fn(async () => ({ success: true }) as const),
   createGoodsReceiptAction: vi.fn(async () => ({ success: true }) as const),
 }));
+vi.mock("@/actions/payments", () => ({
+  recordCustomerPaymentAction: vi.fn(async () => ({ success: true }) as const),
+  recordSupplierPaymentAction: vi.fn(async () => ({ success: true }) as const),
+}));
 
 const { createDeliveryAction, generateInvoiceAction } = await import("@/actions/sales");
 const { createGoodsReceiptAction } = await import("@/actions/purchasing");
+const { recordCustomerPaymentAction, recordSupplierPaymentAction } = await import("@/actions/payments");
 const { offlineActionRegistry } = await import("@/lib/offline/actionRegistry");
 
 function formDataWith(fields: Record<string, string>): FormData {
@@ -53,5 +58,17 @@ describe("offline action registry: extracting a bound id from a hidden field", (
     await offlineActionRegistry.createSalesOrder(formData);
     const { createSalesOrderAction } = await import("@/actions/sales");
     expect(createSalesOrderAction).toHaveBeenCalledWith(formData);
+  });
+
+  test("recordCustomerPayment reads __customerId and calls the real action with (customerId, formData)", async () => {
+    const formData = formDataWith({ __customerId: "cust-111", amount: "500" });
+    await offlineActionRegistry.recordCustomerPayment(formData);
+    expect(recordCustomerPaymentAction).toHaveBeenCalledWith("cust-111", formData);
+  });
+
+  test("recordSupplierPayment reads __supplierId and calls the real action with (supplierId, formData)", async () => {
+    const formData = formDataWith({ __supplierId: "sup-222", amount: "500" });
+    await offlineActionRegistry.recordSupplierPayment(formData);
+    expect(recordSupplierPaymentAction).toHaveBeenCalledWith("sup-222", formData);
   });
 });
