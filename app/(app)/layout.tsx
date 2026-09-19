@@ -55,6 +55,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                   Projects
                 </Link>
                 <Link
+                  href="/manufacturing/boms"
+                  className="flex min-h-11 items-center px-2 hover:text-zinc-900 dark:hover:text-zinc-50"
+                >
+                  Manufacturing
+                </Link>
+                <Link
                   href="/settings/company"
                   className="flex min-h-11 items-center px-2 hover:text-zinc-900 dark:hover:text-zinc-50"
                 >

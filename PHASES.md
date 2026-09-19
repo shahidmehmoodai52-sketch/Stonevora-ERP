@@ -730,6 +730,49 @@ verified before the next begins.
   filter only touches the batch-tracked branch). Automated regression
   coverage added in `tests/rls/phase4-tile-manufacturing.test.ts`, mirroring
   every live-verified path above.
+- **Phase 4 UI — backfilling the screens for Tile Manufacturing** ✅: Phase 4
+  above shipped backend-only; this closes that gap with `/manufacturing`
+  (Bills of Materials, Production Batches, QC), gated the same way
+  `/factory`/`/projects` are. `actions/manufacturing.ts` covers BOM
+  creation (a recipe header + a dynamic add/remove raw-material line list,
+  reusing the free-add/remove pattern from `AdjustmentLineItemsEditor.tsx`),
+  production batch create/start/complete/cancel, and batch QC — the same
+  five-RPC shape Factory's Milestones 2/3/5/6 already established, just on
+  `inventory_batches` instead of `inventory_units`. The new-BOM form filters
+  its finished-product picker to batch-tracked products and its raw-material
+  picker to non-unit-tracked products, matching `start_production_batch`'s
+  own rejection rules — convenience, not the enforcement point. Live-
+  verified end to end through the exact UI-shaped RPC calls (a fresh tenant
+  with the capability enabled, via `execute_sql`): starting a batch
+  correctly consumed both a simple-tracked raw material (from
+  `inventory_stock`) and a batch-tracked one (from `inventory_batches`) in
+  the same run, computed `raw_material_cost` = 150 (50kg clay @ 2 + 10kg
+  glaze @ 5); completing it produced a `pending_qc` finished-goods batch
+  with `total_cost` = 190 (150 raw + 30 labor + 10 overhead) and
+  `cost_per_uom` = 2.00 (190 ÷ 95 actual pieces); QC pass moved it to
+  `in_stock`. Specifically re-verified the cross-phase risk this phase's
+  own `confirm_sales_order` patch introduces: confirming a sales order for
+  the finished tile was rejected ("available 0") while the batch was still
+  `pending_qc`, then succeeded once QC passed it — the exact behavior the
+  patch's own comment claims, now proven rather than just read. Edge/
+  rejection paths: starting a batch whose recipe needs more raw material
+  than is in stock rejected with no partial consumption (confirmed the
+  untouched quantity was still there afterward — the whole start is one
+  transaction); a unit-tracked product used as a raw material rejected;
+  re-inspecting an already-passed batch rejected; cancelling an
+  `in_progress` batch moved it to `cancelled` without restoring any
+  consumed raw material (a genuine, permanent cost loss, exactly as
+  documented — unlike Factory's block release on cancel, which is a real,
+  deliberate domain difference this test confirms was actually implemented
+  that way). Security: RLS denied a Viewer-role user's `production_batches`
+  insert; a Viewer-role user's direct `record_batch_qc_inspection` RPC call
+  rejected with `Missing permission: production.approve`
+  (`start_production_batch`/`complete_production_batch`/
+  `cancel_production_batch` share the identical `has_permission` call,
+  verified by code review). `get_advisors` (security) showed only the same
+  pre-existing, already-accepted findings — nothing new. Test tenant and
+  both test users fully torn down after verification, confirmed empty by a
+  final count query.
 - **Phase 5 — Showroom/Reservation mode** ✅ (optional capability:
   `showroom_reservation`, already present in the capability catalog since
   Phase 0 — no new capability row needed): a walk-in showroom customer can

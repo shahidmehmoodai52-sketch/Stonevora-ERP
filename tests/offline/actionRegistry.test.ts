@@ -39,6 +39,12 @@ vi.mock("@/actions/projects", () => ({
   completeProjectAction: vi.fn(async () => ({ success: true }) as const),
   generateProjectInvoiceAction: vi.fn(async () => ({ success: true }) as const),
 }));
+vi.mock("@/actions/manufacturing", () => ({
+  createBomAction: vi.fn(async () => ({ success: true }) as const),
+  createProductionBatchAction: vi.fn(async () => ({ success: true }) as const),
+  completeProductionBatchAction: vi.fn(async () => ({ success: true }) as const),
+  recordBatchQcInspectionAction: vi.fn(async () => ({ success: true }) as const),
+}));
 
 const { createDeliveryAction, generateInvoiceAction, createSalesReturnAction } = await import("@/actions/sales");
 const { createGoodsReceiptAction, createPurchaseReturnAction } = await import("@/actions/purchasing");
@@ -56,6 +62,12 @@ const {
   completeProjectAction,
   generateProjectInvoiceAction,
 } = await import("@/actions/projects");
+const {
+  createBomAction,
+  createProductionBatchAction,
+  completeProductionBatchAction,
+  recordBatchQcInspectionAction,
+} = await import("@/actions/manufacturing");
 const { offlineActionRegistry } = await import("@/lib/offline/actionRegistry");
 
 function formDataWith(fields: Record<string, string>): FormData {
@@ -166,5 +178,29 @@ describe("offline action registry: extracting a bound id from a hidden field", (
     const formData = formDataWith({ __projectId: "prj-777", invoiceNumber: "INV-9" });
     await offlineActionRegistry.generateProjectInvoice(formData);
     expect(generateProjectInvoiceAction).toHaveBeenCalledWith("prj-777", formData);
+  });
+
+  test("createBom passes formData straight through, no bound id to extract", async () => {
+    const formData = formDataWith({ bomNumber: "BOM-1" });
+    await offlineActionRegistry.createBom(formData);
+    expect(createBomAction).toHaveBeenCalledWith(formData);
+  });
+
+  test("createProductionBatch passes formData straight through, no bound id to extract", async () => {
+    const formData = formDataWith({ batchNumber: "PB-1" });
+    await offlineActionRegistry.createProductionBatch(formData);
+    expect(createProductionBatchAction).toHaveBeenCalledWith(formData);
+  });
+
+  test("completeProductionBatch reads __productionBatchId and calls the real action with (productionBatchId, formData)", async () => {
+    const formData = formDataWith({ __productionBatchId: "pb-888", actualOutputQuantity: "100" });
+    await offlineActionRegistry.completeProductionBatch(formData);
+    expect(completeProductionBatchAction).toHaveBeenCalledWith("pb-888", formData);
+  });
+
+  test("recordBatchQcInspection reads __inventoryBatchId and calls the real action with (inventoryBatchId, formData)", async () => {
+    const formData = formDataWith({ __inventoryBatchId: "ib-999", outcome: "passed" });
+    await offlineActionRegistry.recordBatchQcInspection(formData);
+    expect(recordBatchQcInspectionAction).toHaveBeenCalledWith("ib-999", formData);
   });
 });
