@@ -33,6 +33,12 @@ vi.mock("@/actions/factory", () => ({
   recordProcessingCostsAction: vi.fn(async () => ({ success: true }) as const),
   recordQcInspectionAction: vi.fn(async () => ({ success: true }) as const),
 }));
+vi.mock("@/actions/projects", () => ({
+  createProjectAction: vi.fn(async () => ({ success: true }) as const),
+  addProjectMaterialAction: vi.fn(async () => ({ success: true }) as const),
+  completeProjectAction: vi.fn(async () => ({ success: true }) as const),
+  generateProjectInvoiceAction: vi.fn(async () => ({ success: true }) as const),
+}));
 
 const { createDeliveryAction, generateInvoiceAction, createSalesReturnAction } = await import("@/actions/sales");
 const { createGoodsReceiptAction, createPurchaseReturnAction } = await import("@/actions/purchasing");
@@ -44,6 +50,12 @@ const {
   recordProcessingCostsAction,
   recordQcInspectionAction,
 } = await import("@/actions/factory");
+const {
+  createProjectAction,
+  addProjectMaterialAction,
+  completeProjectAction,
+  generateProjectInvoiceAction,
+} = await import("@/actions/projects");
 const { offlineActionRegistry } = await import("@/lib/offline/actionRegistry");
 
 function formDataWith(fields: Record<string, string>): FormData {
@@ -130,5 +142,29 @@ describe("offline action registry: extracting a bound id from a hidden field", (
     const formData = formDataWith({ __inventoryUnitId: "unit-666", outcome: "passed" });
     await offlineActionRegistry.recordQcInspection(formData);
     expect(recordQcInspectionAction).toHaveBeenCalledWith("unit-666", formData);
+  });
+
+  test("createProject passes formData straight through, no bound id to extract", async () => {
+    const formData = formDataWith({ projectNumber: "PRJ-1" });
+    await offlineActionRegistry.createProject(formData);
+    expect(createProjectAction).toHaveBeenCalledWith(formData);
+  });
+
+  test("addProjectMaterial reads __projectId and calls the real action with (projectId, formData)", async () => {
+    const formData = formDataWith({ __projectId: "prj-777", inventoryUnitId: "unit-1" });
+    await offlineActionRegistry.addProjectMaterial(formData);
+    expect(addProjectMaterialAction).toHaveBeenCalledWith("prj-777", formData);
+  });
+
+  test("completeProject reads __projectId and calls the real action with (projectId, formData)", async () => {
+    const formData = formDataWith({ __projectId: "prj-777", laborCost: "100" });
+    await offlineActionRegistry.completeProject(formData);
+    expect(completeProjectAction).toHaveBeenCalledWith("prj-777", formData);
+  });
+
+  test("generateProjectInvoice reads __projectId and calls the real action with (projectId, formData)", async () => {
+    const formData = formDataWith({ __projectId: "prj-777", invoiceNumber: "INV-9" });
+    await offlineActionRegistry.generateProjectInvoice(formData);
+    expect(generateProjectInvoiceAction).toHaveBeenCalledWith("prj-777", formData);
   });
 });

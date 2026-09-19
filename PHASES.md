@@ -594,6 +594,50 @@ verified before the next begins.
   (repeated live `start_processing_job`/`complete_processing_job`/
   `record_qc_inspection`/`record_processing_costs` calls) throughout this
   phase's own test setup.
+- **Phase 3 UI — backfilling the screens for Projects** ✅: Phase 3 above
+  shipped backend-only; this closes that gap with `/projects` (list/new/
+  detail), gated the same way `/factory` is (a layout-level
+  `stone_fabrication` capability check pointing to Settings when disabled —
+  every RPC still enforces the same gate independently). Materially simpler
+  than the Factory UI: one header table + one join table + 4 RPCs, no new
+  UOM/dimension math, so `actions/projects.ts` and the detail page's three
+  sub-forms (`AddMaterialForm`/`CompleteProjectForm`/`GenerateInvoiceForm`)
+  were enough — no new list/detail hierarchy beyond the single `[id]` page.
+  Cost/margin (`material_cost`/`labor_cost`/`overhead_cost`/`total_cost`)
+  is gated behind `project`.`view_cost`/`view_profit`, reusing the exact
+  `fetchPermissionSet`/`hasPermission`/`showCost` pattern the sales invoice
+  detail page established. `removeProjectMaterialAction` takes two ids
+  (`projectId`, `inventoryUnitId`) rather than one, so it doesn't fit
+  `PostButton`'s `(id) => Promise<ActionResult>` shape directly -- reused
+  `PostButton` anyway by closing over `projectId` in an inline arrow
+  (`action={(unitId) => removeProjectMaterialAction(id, unitId)}`) rather
+  than writing a near-duplicate two-argument button component. Live-
+  verified end to end through the exact UI-shaped RPC calls (a fresh
+  tenant with the capability enabled, via `execute_sql`): adding two slabs
+  to a draft project accumulated `material_cost` correctly (1000 + 600 =
+  1600); removing one released it back to `in_stock` and dropped
+  `material_cost` back to 1000, confirmed by re-adding it; completing with
+  labor 400 + overhead 100 locked `total_cost` at 2100; generating an
+  invoice with per-material sell prices (50sqft@$40, 30sqft@$35) produced
+  the correct $3050 subtotal with both lines carrying the same flat
+  $26.25/sqft cost rate (2100 ÷ 80 total sqft), confirming the
+  proportional-by-area allocation collapsing to a constant is implemented
+  correctly, not just designed that way in the comment. Edge/rejection
+  paths: adding a material to an already-completed project rejected;
+  generating a second invoice for an already-invoiced project rejected;
+  cancelling a completed project rejected; adding a block (`unit_type =
+  'block'`) as a project material rejected ("not a block"); adding a slab
+  with no recorded cost rejected, matching Milestone 6's "never treat an
+  un-costed unit as zero-cost" discipline. Security: RLS denied a
+  Viewer-role user's `projects` insert; a Viewer-role user's direct
+  `add_project_material` RPC call rejected with `Missing permission:
+  project.edit`, confirming that security-definer function's in-body gate
+  actually fires (`complete_project`/`cancel_project`/
+  `generate_project_invoice` share the identical `has_permission` call,
+  verified by code review). `get_advisors` (security) showed only the same
+  pre-existing, already-accepted findings shared by every RPC in this app —
+  nothing new. Test tenant and both test users fully torn down after
+  verification, confirmed empty by a final count query.
 - **Phase 4 — Tile Manufacturing mode** ✅ (optional capability:
   `tile_manufacturing`, already present in the capability catalog since Phase 0
   — no new capability row needed): recipe-driven batch production. A tile

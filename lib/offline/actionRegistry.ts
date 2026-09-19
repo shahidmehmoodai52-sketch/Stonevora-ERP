@@ -18,6 +18,12 @@ import {
   recordProcessingCostsAction,
   recordQcInspectionAction,
 } from "@/actions/factory";
+import {
+  createProjectAction,
+  addProjectMaterialAction,
+  completeProjectAction,
+  generateProjectInvoiceAction,
+} from "@/actions/projects";
 
 // A queued outbox item stores an actionKey (a stable string), not the
 // Server Action function itself -- functions aren't serializable, and a
@@ -68,6 +74,13 @@ export const offlineActionRegistry: Record<
     recordProcessingCostsAction(String(formData.get("__processingJobId") ?? ""), formData),
   recordQcInspection: (formData) =>
     recordQcInspectionAction(String(formData.get("__inventoryUnitId") ?? ""), formData),
+  createProject: createProjectAction,
+  addProjectMaterial: (formData) =>
+    addProjectMaterialAction(String(formData.get("__projectId") ?? ""), formData),
+  completeProject: (formData) =>
+    completeProjectAction(String(formData.get("__projectId") ?? ""), formData),
+  generateProjectInvoice: (formData) =>
+    generateProjectInvoiceAction(String(formData.get("__projectId") ?? ""), formData),
 };
 
 export type OfflineActionKey = keyof typeof offlineActionRegistry;
