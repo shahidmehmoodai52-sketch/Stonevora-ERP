@@ -5,6 +5,7 @@ import { GrnLineItemsEditor } from "./GrnLineItemsEditor";
 
 type Warehouse = { id: string; name: string };
 type Location = { id: string; code: string; path: string | null };
+type Uom = { id: string; code: string };
 type PoLine = {
   id: string;
   productId: string;
@@ -22,6 +23,10 @@ export function ReceiveForm({
   warehouses,
   locations,
   poLines,
+  dimensionUoms,
+  volumeUoms,
+  weightUoms,
+  blockIntakeEnabled,
 }: {
   action: (formData: FormData) => Promise<SimpleActionResult>;
   purchaseOrderId: string;
@@ -29,6 +34,10 @@ export function ReceiveForm({
   warehouses: Warehouse[];
   locations: Location[];
   poLines: PoLine[];
+  dimensionUoms: Uom[];
+  volumeUoms: Uom[];
+  weightUoms: Uom[];
+  blockIntakeEnabled: boolean;
 }) {
   return (
     <ActionForm
@@ -55,7 +64,14 @@ export function ReceiveForm({
         </div>
       </div>
 
-      <GrnLineItemsEditor poLines={poLines} locations={locations} />
+      <GrnLineItemsEditor
+        poLines={poLines}
+        locations={locations}
+        dimensionUoms={dimensionUoms}
+        volumeUoms={volumeUoms}
+        weightUoms={weightUoms}
+        blockIntakeEnabled={blockIntakeEnabled}
+      />
 
       <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Landed cost</h3>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

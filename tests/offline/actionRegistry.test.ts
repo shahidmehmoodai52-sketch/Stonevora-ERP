@@ -27,11 +27,23 @@ vi.mock("@/actions/payments", () => ({
 vi.mock("@/actions/inventory", () => ({
   createStockAdjustmentAction: vi.fn(async () => ({ success: true }) as const),
 }));
+vi.mock("@/actions/factory", () => ({
+  createProcessingJobAction: vi.fn(async () => ({ success: true }) as const),
+  completeProcessingJobAction: vi.fn(async () => ({ success: true }) as const),
+  recordProcessingCostsAction: vi.fn(async () => ({ success: true }) as const),
+  recordQcInspectionAction: vi.fn(async () => ({ success: true }) as const),
+}));
 
 const { createDeliveryAction, generateInvoiceAction, createSalesReturnAction } = await import("@/actions/sales");
 const { createGoodsReceiptAction, createPurchaseReturnAction } = await import("@/actions/purchasing");
 const { recordCustomerPaymentAction, recordSupplierPaymentAction } = await import("@/actions/payments");
 const { createStockAdjustmentAction } = await import("@/actions/inventory");
+const {
+  createProcessingJobAction,
+  completeProcessingJobAction,
+  recordProcessingCostsAction,
+  recordQcInspectionAction,
+} = await import("@/actions/factory");
 const { offlineActionRegistry } = await import("@/lib/offline/actionRegistry");
 
 function formDataWith(fields: Record<string, string>): FormData {
@@ -94,5 +106,29 @@ describe("offline action registry: extracting a bound id from a hidden field", (
     const formData = formDataWith({ __goodsReceiptId: "grn-444", returnNumber: "PR-1" });
     await offlineActionRegistry.createPurchaseReturn(formData);
     expect(createPurchaseReturnAction).toHaveBeenCalledWith("grn-444", formData);
+  });
+
+  test("createProcessingJob passes formData straight through, no bound id to extract", async () => {
+    const formData = formDataWith({ jobNumber: "JOB-1" });
+    await offlineActionRegistry.createProcessingJob(formData);
+    expect(createProcessingJobAction).toHaveBeenCalledWith(formData);
+  });
+
+  test("completeProcessingJob reads __processingJobId and calls the real action with (processingJobId, formData)", async () => {
+    const formData = formDataWith({ __processingJobId: "job-555" });
+    await offlineActionRegistry.completeProcessingJob(formData);
+    expect(completeProcessingJobAction).toHaveBeenCalledWith("job-555", formData);
+  });
+
+  test("recordProcessingCosts reads __processingJobId and calls the real action with (processingJobId, formData)", async () => {
+    const formData = formDataWith({ __processingJobId: "job-555", processingCost: "100" });
+    await offlineActionRegistry.recordProcessingCosts(formData);
+    expect(recordProcessingCostsAction).toHaveBeenCalledWith("job-555", formData);
+  });
+
+  test("recordQcInspection reads __inventoryUnitId and calls the real action with (inventoryUnitId, formData)", async () => {
+    const formData = formDataWith({ __inventoryUnitId: "unit-666", outcome: "passed" });
+    await offlineActionRegistry.recordQcInspection(formData);
+    expect(recordQcInspectionAction).toHaveBeenCalledWith("unit-666", formData);
   });
 });

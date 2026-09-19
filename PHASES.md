@@ -457,6 +457,78 @@ verified before the next begins.
     `execute_sql` call) — re-run with the correct context, confirmed
     correct; noted here for the same transparency this project has applied
     to every real finding.
+- **Phase 2 UI — backfilling the screens for all 6 Factory milestones** ✅:
+  Phase 2 above shipped backend-only; this closes that gap with `/factory/*`
+  (gated behind a layout-level `block_slab_factory` capability check that
+  points to Settings when disabled, rather than a form that would fail at
+  submit — every underlying RPC still enforces the same gate independently,
+  this is purely UX). Milestone 1 (block intake) required extending the
+  *existing* GRN receiving screen rather than a new page: a PO line's
+  `quantity` for a unit-tracked product is a block COUNT, but
+  `post_goods_receipt` requires exactly one GRN line per physical block
+  (`quantity = 1` each, its own dimensions/cost) — so `GrnLineItemsEditor.tsx`
+  now renders simple/batch PO lines exactly as before (one row each) plus a
+  separate, independently addable/removable "blocks" list per unit-tracked
+  PO line, capped at that line's outstanding block count. Every row across
+  both groups still serializes into one flat, globally-indexed
+  `lines[i][...]` array for the server-side parser; the per-PO-line block
+  index ranges are precomputed in a single pass (not accumulated through
+  JSX during render, which was the first draft and got replaced before it
+  shipped — an accumulator threaded through `.map()` callbacks works
+  correctly here since array construction is synchronous, but it reads like
+  a bug and isn't worth the doubt). Milestones 2/3/4/5/6 got their own
+  `/factory/blocks` (browse blocks, jump to "Start job"), `/factory/jobs`
+  (list/new/detail), and `/factory/qc` (queue + per-unit inspection) routes,
+  backed by a new `actions/factory.ts`. The output-line editor on a job's
+  complete-job form deliberately allows zero rows — a block that turns out
+  fully unusable (e.g. a crack found once opened) completes as 100% waste,
+  matching `complete_processing_job`'s own explicit support for an empty
+  `p_slabs` array; no client-side "at least one line" rule was invented to
+  contradict that. `createProcessingJob`/`completeProcessingJob`/
+  `recordProcessingCosts`/`recordQcInspection` are all wired into the
+  offline outbox (`lib/offline/actionRegistry.ts`), reusing the established
+  hidden-`__xId`-field pattern for the three bound to an id ahead of
+  `formData`. Live-verified end to end through the exact UI-shaped inserts
+  (a fresh tenant with the capability enabled, via `execute_sql`, not just
+  re-confirming the RPCs Phase 2 already proved): block intake for two
+  blocks with different dimensions (CM→CFT volume conversion correct:
+  300×180×180cm → 343.2586 CFT, 280×170×170cm → 285.7663 CFT, costs
+  preserved from the entered per-block unit cost); start → in_progress with
+  the block moved to `processing`; complete with 2 slabs + 1 remnant
+  (areas/volumes correct, yield 2.3086%, waste 335.3340 CFT, block →
+  `consumed`, all three outputs → `pending_qc`); cost roll-up allocated
+  6200 total (block cost 5200 + processing 800 + overhead 200) by volume
+  share, confirmed the three allocated costs sum back to exactly 6200; QC
+  pass (→ `in_stock`, grade overridden by the confirmed grade) and QC
+  reject (→ `rejected`, permanently excluded from `in_stock`) on two
+  different output units; `cancel_processing_job` restoring an in-progress
+  block to `in_stock`. Edge/rejection paths: a unit-tracked GRN line with
+  `quantity ≠ 1` rejected with the RPC's own explicit message; output
+  volume exceeding the block's recorded volume rejected as physically
+  impossible; the 100%-waste empty-array path accepted and recorded
+  correctly (0% yield, full block volume as waste); re-inspecting an
+  already-inspected unit rejected ("not pending QC"); a second tenant with
+  the capability *not* enabled rejected at `post_goods_receipt` with the
+  capability's own error message, confirming the layout-level UX gate
+  matches the real backend gate exactly. Security: RLS denied a Viewer-role
+  user's `processing_jobs` insert; and — since `start_processing_job`/
+  `record_qc_inspection`/etc. are all `security definer` and therefore
+  bypass RLS, so their in-body `has_permission` checks are the only real
+  gate — a Viewer-role user's direct RPC calls to both `start_processing_job`
+  and `record_qc_inspection` were confirmed rejected with `Missing
+  permission: production.edit`/`production.approve` respectively, proving
+  those in-body checks actually fire rather than just reading correctly in
+  the source (`complete_processing_job`/`cancel_processing_job`/
+  `record_processing_costs` share the identical `has_permission` call,
+  verified by code review rather than re-run three more times). Branch
+  scoping (`has_branch_access`) was not re-tested here: it's the exact same
+  primitive already exhaustively proven across Phase 1, Phase 1.x, and
+  Phase 2 itself, and every Factory RPC calls it identically — re-testing
+  it again would only be checking that a function call is a function call.
+  `get_advisors` (security) showed only the same pre-existing, already-
+  accepted findings shared by every RPC in this app — nothing new. All
+  three test tenants and their users were fully torn down after
+  verification, confirmed empty by a final count query.
 - **Phase 3 — Stone Fabrication/Projects mode** ✅ (optional capability:
   `stone_fabrication`, already present in the capability catalog since Phase 0
   — no new capability row needed): project-based job costing that consumes

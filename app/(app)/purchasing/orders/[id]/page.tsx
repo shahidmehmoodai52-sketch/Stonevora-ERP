@@ -14,7 +14,7 @@ export default async function PurchaseOrderDetailPage({
   const tenant = await requireActiveTenant();
   const supabase = await createClient();
 
-  const [{ data: po }, { data: lines }, { data: warehouses }, { data: locations }, { data: receipts }] =
+  const [{ data: po }, { data: lines }, { data: warehouses }, { data: locations }, { data: receipts }, { data: dimensionUoms }, { data: volumeUoms }, { data: weightUoms }] =
     await Promise.all([
       supabase.from("purchase_orders").select("*, suppliers(name), branches(name)").eq("id", id).single(),
       supabase
@@ -28,9 +28,26 @@ export default async function PurchaseOrderDetailPage({
         .select("id, grn_number, receipt_date, status, freight_cost, duty_cost, handling_cost, other_cost")
         .eq("purchase_order_id", id)
         .order("receipt_date", { ascending: false }),
+      supabase.from("uom").select("id, code").in("code", ["CM", "INCH", "MM"]),
+      supabase.from("uom").select("id, code").in("code", ["M3", "CFT"]),
+      supabase.from("uom").select("id, code").in("code", ["KG", "TON"]),
     ]);
 
   if (!po) notFound();
+
+  const { data: blockCapabilityRow } = await supabase
+    .from("business_capabilities")
+    .select("id")
+    .eq("code", "block_slab_factory")
+    .single();
+  const { data: blockCapabilityEnabled } = blockCapabilityRow
+    ? await supabase
+        .from("tenant_capabilities")
+        .select("id")
+        .eq("tenant_id", tenant.tenantId)
+        .eq("capability_id", blockCapabilityRow.id)
+        .maybeSingle()
+    : { data: null };
 
   const outstandingLines = (lines ?? []).filter((l) => l.received_quantity < l.quantity);
 
@@ -120,6 +137,10 @@ export default async function PurchaseOrderDetailPage({
               unitCost: l.unit_price,
               trackingMode: (l.products?.inventory_tracking_mode ?? "simple") as "simple" | "batch" | "unit",
             }))}
+            dimensionUoms={dimensionUoms ?? []}
+            volumeUoms={volumeUoms ?? []}
+            weightUoms={weightUoms ?? []}
+            blockIntakeEnabled={!!blockCapabilityEnabled}
           />
         </>
       ) : (

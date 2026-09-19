@@ -106,6 +106,19 @@ type GrnLineInput = {
   lotNumber: string;
   shadeCode: string;
   caliberCode: string;
+  // Block-intake fields (Factory Milestone 1) -- only meaningful when the
+  // line's product is unit-tracked; post_goods_receipt requires all of
+  // these together for that branch and ignores them otherwise.
+  unitCode: string;
+  dimensionLength: string;
+  dimensionWidth: string;
+  dimensionHeight: string;
+  dimensionUomId: string;
+  volumeUomId: string;
+  unitWeight: string;
+  unitWeightUomId: string;
+  quarrySource: string;
+  unitQualityGrade: string;
 };
 
 function parseGrnLines(formData: FormData): GrnLineInput[] {
@@ -123,6 +136,16 @@ function parseGrnLines(formData: FormData): GrnLineInput[] {
       lotNumber: String(formData.get(`lines[${i}][lotNumber]`) ?? ""),
       shadeCode: String(formData.get(`lines[${i}][shadeCode]`) ?? ""),
       caliberCode: String(formData.get(`lines[${i}][caliberCode]`) ?? ""),
+      unitCode: String(formData.get(`lines[${i}][unitCode]`) ?? ""),
+      dimensionLength: String(formData.get(`lines[${i}][dimensionLength]`) ?? ""),
+      dimensionWidth: String(formData.get(`lines[${i}][dimensionWidth]`) ?? ""),
+      dimensionHeight: String(formData.get(`lines[${i}][dimensionHeight]`) ?? ""),
+      dimensionUomId: String(formData.get(`lines[${i}][dimensionUomId]`) ?? ""),
+      volumeUomId: String(formData.get(`lines[${i}][volumeUomId]`) ?? ""),
+      unitWeight: String(formData.get(`lines[${i}][unitWeight]`) ?? ""),
+      unitWeightUomId: String(formData.get(`lines[${i}][unitWeightUomId]`) ?? ""),
+      quarrySource: String(formData.get(`lines[${i}][quarrySource]`) ?? ""),
+      unitQualityGrade: String(formData.get(`lines[${i}][unitQualityGrade]`) ?? ""),
     });
     i += 1;
   }
@@ -185,6 +208,16 @@ export async function createGoodsReceiptAction(
       lot_number: l.lotNumber || null,
       shade_code: l.shadeCode || null,
       caliber_code: l.caliberCode || null,
+      unit_code: l.unitCode || null,
+      dimension_length: l.dimensionLength ? Number(l.dimensionLength) : null,
+      dimension_width: l.dimensionWidth ? Number(l.dimensionWidth) : null,
+      dimension_height: l.dimensionHeight ? Number(l.dimensionHeight) : null,
+      dimension_uom_id: l.dimensionUomId || null,
+      volume_uom_id: l.volumeUomId || null,
+      unit_weight: l.unitWeight ? Number(l.unitWeight) : null,
+      unit_weight_uom_id: l.unitWeightUomId || null,
+      quarry_source: l.quarrySource || null,
+      unit_quality_grade: l.unitQualityGrade || null,
     }))
   );
   if (linesError) return { error: linesError.message };
