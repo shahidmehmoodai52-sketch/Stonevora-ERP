@@ -10,6 +10,9 @@ export default function PurchasingLayout({ children }: { children: React.ReactNo
         <Link href="/purchasing/suppliers" className="flex min-h-11 items-center border-b-2 border-transparent px-1 text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50">
           Suppliers
         </Link>
+        <Link href="/purchasing/returns" className="flex min-h-11 items-center border-b-2 border-transparent px-1 text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50">
+          Returns
+        </Link>
       </nav>
       {children}
     </div>

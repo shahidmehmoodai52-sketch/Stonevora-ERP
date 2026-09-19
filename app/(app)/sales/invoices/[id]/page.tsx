@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveTenant } from "@/lib/tenant/getActiveTenant";
@@ -40,6 +41,10 @@ export default async function SalesInvoiceDetailPage({
       <h1 className="mb-1 text-xl font-semibold text-zinc-900 dark:text-zinc-50">{invoice.invoice_number}</h1>
       <p className="mb-6 text-sm text-zinc-600 dark:text-zinc-400">
         {invoice.customers?.name} · {invoice.branches?.name} · <span className="font-medium">{invoice.status}</span>
+        {" · "}
+        <Link href={`/sales/returns/new?invoiceId=${invoice.id}`} className="underline hover:text-zinc-900 dark:hover:text-zinc-50">
+          Create return
+        </Link>
       </p>
 
       <div className="-mx-4 mb-6 overflow-x-auto px-4 sm:mx-0 sm:px-0">

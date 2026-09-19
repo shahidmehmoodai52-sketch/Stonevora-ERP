@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveTenant } from "@/lib/tenant/getActiveTenant";
@@ -73,6 +74,7 @@ export default async function PurchaseOrderDetailPage({
               <th className="py-2">Date</th>
               <th className="py-2">Status</th>
               <th className="py-2">Landed cost</th>
+              <th className="py-2"></th>
             </tr>
           </thead>
           <tbody>
@@ -82,11 +84,18 @@ export default async function PurchaseOrderDetailPage({
                 <td className="py-2">{r.receipt_date}</td>
                 <td className="py-2">{r.status}</td>
                 <td className="py-2">{r.freight_cost + r.duty_cost + r.handling_cost + r.other_cost}</td>
+                <td className="py-2">
+                  {r.status === "posted" && (
+                    <Link href={`/purchasing/returns/new?grnId=${r.id}`} className="text-zinc-600 underline hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50">
+                      Return
+                    </Link>
+                  )}
+                </td>
               </tr>
             ))}
             {(receipts ?? []).length === 0 && (
               <tr>
-                <td colSpan={4} className="py-4 text-zinc-500">No receipts yet.</td>
+                <td colSpan={5} className="py-4 text-zinc-500">No receipts yet.</td>
               </tr>
             )}
           </tbody>

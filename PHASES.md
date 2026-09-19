@@ -70,6 +70,69 @@ verified before the next begins.
   Phase 1's own `post_goods_receipt`/`confirm_sales_order`/
   `dispatch_delivery`/`generate_sales_invoice_from_delivery` throughout
   this phase's own test setup.
+- **Phase 1.x UI — backfilling the screens for the RPCs above** ✅: the
+  schema/RPC work above shipped with no UI, by its own explicit scope
+  decision; this closes that gap with `/inventory/adjustments`,
+  `/sales/returns`, `/purchasing/returns` (list/new/detail for all three).
+  Draft-then-post lifecycle (unlike GRN's one-step receive-and-post):
+  `actions/inventory.ts`'s `createStockAdjustmentAction`/
+  `postStockAdjustmentAction` and the equivalent pair added to
+  `actions/sales.ts`/`actions/purchasing.ts`, mirroring `sales_orders`'
+  draft→confirm split rather than GRN's precedent — a conscious choice,
+  since all three of these RPCs model an explicit `draft` status and an
+  irreversible stock change earns a review step. `components/PostButton.tsx`
+  generalizes `ConfirmOrderButton.tsx`'s exact pattern for all three. All
+  three "create" forms are wired into the offline outbox
+  (`createStockAdjustment`/`createSalesReturn`/`createPurchaseReturn` in
+  `lib/offline/actionRegistry.ts`), reusing the hidden-`__xId`-field
+  pattern for the two whose id is bound ahead of `formData`
+  (`createSalesReturnAction(salesInvoiceId, ...)`/
+  `createPurchaseReturnAction(goodsReceiptId, ...)`). Tracking-mode-aware
+  line editors (batch picker vs. location picker vs. filtered-out
+  unit-tracked, matching `GrnLineItemsEditor.tsx`'s established pattern);
+  cost/margin redaction on the sales-return screens via
+  `sales_return_lines_secure` + `view_cost`/`view_profit`, matching the
+  invoice detail page (purchase returns have no such view, matching
+  `ReceiveForm`'s own unredacted-cost precedent). Two bugs caught before
+  live testing, both fixed: the return line editors originally gated
+  identifying hidden fields (`salesInvoiceLineId`/`productId`/etc.) on a
+  row's `selected` checkbox, which silently truncated the server-side
+  sequential-index parser at the first unselected non-terminal row — fixed
+  by always rendering identifying fields, gating only the editable ones;
+  `parseAdjustmentLines` used `l.quantity` as a truthy check instead of
+  `Number(l.quantity) > 0`, letting the string `"0"` slip past into a
+  column with a `check (quantity_change <> 0)` constraint. Live-verified
+  end to end through the exact Server-Action-shaped inserts (not just the
+  RPCs in isolation, which the schema work above already covered):
+  stock-adjustment post (simple-product decrement, batch-product
+  weighted-average cost blend `(50×20 + 20×25)/70 = 21.4286`, `posted`
+  status); full sales-return lifecycle through a real
+  SO→confirm→delivery→dispatch→invoice trading loop (restock
+  60→63 at unchanged `avg_cost`, invoice line `returned_quantity` → 3,
+  `subtotal`/`total_amount` correct, `posted` status); full
+  purchase-return lifecycle through a real PO→GRN→`post_goods_receipt`
+  loop (decrement 83→78 at unchanged blended cost, GRN line
+  `returned_quantity` → 5); over-return rejection on both the sales-return
+  and purchase-return RPCs; the `quantity_change <> 0` and
+  `purchase_return_lines.unit_cost not null` constraints rejecting bad
+  data directly; RLS correctly denying a Viewer-role user's insert on all
+  three new tables; and — since all three `post_*` RPCs are
+  `security definer` and therefore bypass RLS, so their own in-body
+  `has_permission`/`has_branch_access` checks are the only gate — a
+  Viewer-role user's direct RPC call rejected with `Missing permission:
+  warehouse.edit`, confirming that gate actually fires rather than just
+  reading correctly in the source. `get_advisors` (security) showed only
+  the same pre-existing, already-accepted `security definer` executable-by-
+  authenticated warnings shared by every RPC in this app, plus one
+  unrelated auth setting — nothing new. Test tenant and both test users
+  fully torn down after verification (audit_log rows, tenant cascade,
+  auth.users rows), confirmed empty by a final count query. One
+  environment episode along the way, unrelated to the code itself: the
+  Supabase project had auto-paused from inactivity mid-session
+  (`execute_sql` timing out while a lighter `get_project` call still
+  responded, which is what distinguished a paused project from an MCP
+  outage) and needed an explicit user-approved `restore_project` before
+  live testing could continue.
 - **Phase 1 security fix (migration 0045)** ✅: a real, exploitable
   branch-scoping gap found incidentally while researching Phase 3's own
   invoicing RPC (looking for the branch-check precedent to match).

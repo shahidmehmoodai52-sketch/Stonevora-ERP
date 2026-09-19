@@ -13,19 +13,25 @@ vi.mock("@/actions/sales", () => ({
   createSalesOrderAction: vi.fn(async () => ({ success: true }) as const),
   createDeliveryAction: vi.fn(async () => ({ success: true }) as const),
   generateInvoiceAction: vi.fn(async () => ({ success: true }) as const),
+  createSalesReturnAction: vi.fn(async () => ({ success: true }) as const),
 }));
 vi.mock("@/actions/purchasing", () => ({
   createPurchaseOrderAction: vi.fn(async () => ({ success: true }) as const),
   createGoodsReceiptAction: vi.fn(async () => ({ success: true }) as const),
+  createPurchaseReturnAction: vi.fn(async () => ({ success: true }) as const),
 }));
 vi.mock("@/actions/payments", () => ({
   recordCustomerPaymentAction: vi.fn(async () => ({ success: true }) as const),
   recordSupplierPaymentAction: vi.fn(async () => ({ success: true }) as const),
 }));
+vi.mock("@/actions/inventory", () => ({
+  createStockAdjustmentAction: vi.fn(async () => ({ success: true }) as const),
+}));
 
-const { createDeliveryAction, generateInvoiceAction } = await import("@/actions/sales");
-const { createGoodsReceiptAction } = await import("@/actions/purchasing");
+const { createDeliveryAction, generateInvoiceAction, createSalesReturnAction } = await import("@/actions/sales");
+const { createGoodsReceiptAction, createPurchaseReturnAction } = await import("@/actions/purchasing");
 const { recordCustomerPaymentAction, recordSupplierPaymentAction } = await import("@/actions/payments");
+const { createStockAdjustmentAction } = await import("@/actions/inventory");
 const { offlineActionRegistry } = await import("@/lib/offline/actionRegistry");
 
 function formDataWith(fields: Record<string, string>): FormData {
@@ -70,5 +76,23 @@ describe("offline action registry: extracting a bound id from a hidden field", (
     const formData = formDataWith({ __supplierId: "sup-222", amount: "500" });
     await offlineActionRegistry.recordSupplierPayment(formData);
     expect(recordSupplierPaymentAction).toHaveBeenCalledWith("sup-222", formData);
+  });
+
+  test("createStockAdjustment passes formData straight through, no bound id to extract", async () => {
+    const formData = formDataWith({ adjustmentNumber: "ADJ-1" });
+    await offlineActionRegistry.createStockAdjustment(formData);
+    expect(createStockAdjustmentAction).toHaveBeenCalledWith(formData);
+  });
+
+  test("createSalesReturn reads __salesInvoiceId and calls the real action with (salesInvoiceId, formData)", async () => {
+    const formData = formDataWith({ __salesInvoiceId: "inv-333", returnNumber: "SR-1" });
+    await offlineActionRegistry.createSalesReturn(formData);
+    expect(createSalesReturnAction).toHaveBeenCalledWith("inv-333", formData);
+  });
+
+  test("createPurchaseReturn reads __goodsReceiptId and calls the real action with (goodsReceiptId, formData)", async () => {
+    const formData = formDataWith({ __goodsReceiptId: "grn-444", returnNumber: "PR-1" });
+    await offlineActionRegistry.createPurchaseReturn(formData);
+    expect(createPurchaseReturnAction).toHaveBeenCalledWith("grn-444", formData);
   });
 });

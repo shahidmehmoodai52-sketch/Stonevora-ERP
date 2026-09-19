@@ -1,7 +1,17 @@
 import type { SimpleActionResult } from "@/components/ActionForm";
-import { createSalesOrderAction, createDeliveryAction, generateInvoiceAction } from "@/actions/sales";
-import { createPurchaseOrderAction, createGoodsReceiptAction } from "@/actions/purchasing";
+import {
+  createSalesOrderAction,
+  createDeliveryAction,
+  generateInvoiceAction,
+  createSalesReturnAction,
+} from "@/actions/sales";
+import {
+  createPurchaseOrderAction,
+  createGoodsReceiptAction,
+  createPurchaseReturnAction,
+} from "@/actions/purchasing";
 import { recordCustomerPaymentAction, recordSupplierPaymentAction } from "@/actions/payments";
+import { createStockAdjustmentAction } from "@/actions/inventory";
 
 // A queued outbox item stores an actionKey (a stable string), not the
 // Server Action function itself -- functions aren't serializable, and a
@@ -40,6 +50,11 @@ export const offlineActionRegistry: Record<
     recordCustomerPaymentAction(String(formData.get("__customerId") ?? ""), formData),
   recordSupplierPayment: (formData) =>
     recordSupplierPaymentAction(String(formData.get("__supplierId") ?? ""), formData),
+  createStockAdjustment: createStockAdjustmentAction,
+  createSalesReturn: (formData) =>
+    createSalesReturnAction(String(formData.get("__salesInvoiceId") ?? ""), formData),
+  createPurchaseReturn: (formData) =>
+    createPurchaseReturnAction(String(formData.get("__goodsReceiptId") ?? ""), formData),
 };
 
 export type OfflineActionKey = keyof typeof offlineActionRegistry;

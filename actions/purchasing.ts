@@ -197,3 +197,102 @@ export async function createGoodsReceiptAction(
   revalidatePath(`/purchasing/orders/${purchaseOrderId}`);
   return { success: true };
 }
+
+function parsePurchaseReturnLines(formData: FormData) {
+  const lines: {
+    goodsReceiptLineId: string;
+    productId: string;
+    quantity: string;
+    uomId: string;
+    unitCost: string;
+    locationId: string;
+    batchId: string;
+  }[] = [];
+  let i = 0;
+  while (formData.has(`lines[${i}][goodsReceiptLineId]`)) {
+    lines.push({
+      goodsReceiptLineId: String(formData.get(`lines[${i}][goodsReceiptLineId]`) ?? ""),
+      productId: String(formData.get(`lines[${i}][productId]`) ?? ""),
+      quantity: String(formData.get(`lines[${i}][quantity]`) ?? ""),
+      uomId: String(formData.get(`lines[${i}][uomId]`) ?? ""),
+      unitCost: String(formData.get(`lines[${i}][unitCost]`) ?? ""),
+      locationId: String(formData.get(`lines[${i}][locationId]`) ?? ""),
+      batchId: String(formData.get(`lines[${i}][batchId]`) ?? ""),
+    });
+    i += 1;
+  }
+  return lines.filter((l) => l.goodsReceiptLineId && Number(l.quantity) > 0);
+}
+
+// Created as a draft, then posted separately (post_purchase_return) -- same
+// review-before-irreversible-stock-change reasoning as stock adjustments.
+export async function createPurchaseReturnAction(
+  goodsReceiptId: string,
+  formData: FormData
+): Promise<ActionResult> {
+  const tenant = await requireActiveTenant();
+  await requirePermission(tenant.tenantId, "purchasing", "create");
+
+  const returnNumber = String(formData.get("returnNumber") ?? "").trim();
+  const branchId = String(formData.get("branchId") ?? "");
+  const warehouseId = String(formData.get("warehouseId") ?? "");
+  const supplierId = String(formData.get("supplierId") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  const lines = parsePurchaseReturnLines(formData);
+
+  if (!returnNumber || !branchId || !warehouseId || !supplierId) {
+    return { error: "Return number, branch, warehouse and supplier are required" };
+  }
+  if (lines.length === 0) return { error: "Select at least one line to return" };
+  if (lines.some((l) => !l.unitCost)) return { error: "Unit cost is required for every returned line" };
+
+  const supabase = await createClient();
+  const { data: ret, error } = await supabase
+    .from("purchase_returns")
+    .insert({
+      tenant_id: tenant.tenantId,
+      branch_id: branchId,
+      warehouse_id: warehouseId,
+      supplier_id: supplierId,
+      goods_receipt_id: goodsReceiptId,
+      return_number: returnNumber,
+      reason: reason || null,
+      status: "draft",
+    })
+    .select("id")
+    .single();
+  if (error || !ret) return { error: error?.message ?? "Failed to create purchase return" };
+
+  const { error: linesError } = await supabase.from("purchase_return_lines").insert(
+    lines.map((l) => {
+      const quantity = Number(l.quantity);
+      const unitCost = Number(l.unitCost);
+      return {
+        tenant_id: tenant.tenantId,
+        purchase_return_id: ret.id,
+        goods_receipt_line_id: l.goodsReceiptLineId,
+        product_id: l.productId,
+        quantity,
+        uom_id: l.uomId,
+        unit_cost: unitCost,
+        line_total: quantity * unitCost,
+        location_id: l.locationId || null,
+        batch_id: l.batchId || null,
+      };
+    })
+  );
+  if (linesError) return { error: linesError.message };
+
+  revalidatePath(`/purchasing/orders`);
+  revalidatePath("/purchasing/returns");
+  redirect(`/purchasing/returns/${ret.id}`);
+}
+
+export async function postPurchaseReturnAction(purchaseReturnId: string): Promise<ActionResult> {
+  await requireActiveTenant();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("post_purchase_return", { p_purchase_return_id: purchaseReturnId });
+  if (error) return { error: error.message };
+  revalidatePath(`/purchasing/returns/${purchaseReturnId}`);
+  return { success: true };
+}

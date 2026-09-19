@@ -243,3 +243,108 @@ export async function generateInvoiceAction(
   revalidatePath("/sales/invoices");
   return { success: true };
 }
+
+function parseReturnLines(formData: FormData) {
+  const lines: {
+    salesInvoiceLineId: string;
+    productId: string;
+    quantity: string;
+    uomId: string;
+    unitPrice: string;
+    unitCost: string;
+    restock: string;
+    restockLocationId: string;
+    restockBatchId: string;
+  }[] = [];
+  let i = 0;
+  while (formData.has(`lines[${i}][salesInvoiceLineId]`)) {
+    lines.push({
+      salesInvoiceLineId: String(formData.get(`lines[${i}][salesInvoiceLineId]`) ?? ""),
+      productId: String(formData.get(`lines[${i}][productId]`) ?? ""),
+      quantity: String(formData.get(`lines[${i}][quantity]`) ?? ""),
+      uomId: String(formData.get(`lines[${i}][uomId]`) ?? ""),
+      unitPrice: String(formData.get(`lines[${i}][unitPrice]`) ?? ""),
+      unitCost: String(formData.get(`lines[${i}][unitCost]`) ?? ""),
+      restock: String(formData.get(`lines[${i}][restock]`) ?? "true"),
+      restockLocationId: String(formData.get(`lines[${i}][restockLocationId]`) ?? ""),
+      restockBatchId: String(formData.get(`lines[${i}][restockBatchId]`) ?? ""),
+    });
+    i += 1;
+  }
+  return lines.filter((l) => l.salesInvoiceLineId && Number(l.quantity) > 0);
+}
+
+// Created as a draft, then posted separately (post_sales_return) -- same
+// review-before-irreversible-stock-change reasoning as stock adjustments.
+export async function createSalesReturnAction(
+  salesInvoiceId: string,
+  formData: FormData
+): Promise<ActionResult> {
+  const tenant = await requireActiveTenant();
+  await requirePermission(tenant.tenantId, "sales", "create");
+
+  const returnNumber = String(formData.get("returnNumber") ?? "").trim();
+  const branchId = String(formData.get("branchId") ?? "");
+  const warehouseId = String(formData.get("warehouseId") ?? "");
+  const customerId = String(formData.get("customerId") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  const lines = parseReturnLines(formData);
+
+  if (!returnNumber || !branchId || !warehouseId || !customerId) {
+    return { error: "Return number, branch, warehouse and customer are required" };
+  }
+  if (lines.length === 0) return { error: "Select at least one line to return" };
+
+  const supabase = await createClient();
+  const { data: ret, error } = await supabase
+    .from("sales_returns")
+    .insert({
+      tenant_id: tenant.tenantId,
+      branch_id: branchId,
+      warehouse_id: warehouseId,
+      customer_id: customerId,
+      sales_invoice_id: salesInvoiceId,
+      return_number: returnNumber,
+      reason: reason || null,
+      status: "draft",
+    })
+    .select("id")
+    .single();
+  if (error || !ret) return { error: error?.message ?? "Failed to create sales return" };
+
+  const { error: linesError } = await supabase.from("sales_return_lines").insert(
+    lines.map((l) => {
+      const quantity = Number(l.quantity);
+      const unitPrice = Number(l.unitPrice || 0);
+      const restock = l.restock === "true";
+      return {
+        tenant_id: tenant.tenantId,
+        sales_return_id: ret.id,
+        sales_invoice_line_id: l.salesInvoiceLineId,
+        product_id: l.productId,
+        quantity,
+        uom_id: l.uomId,
+        unit_price: unitPrice,
+        unit_cost: l.unitCost ? Number(l.unitCost) : null,
+        line_total: quantity * unitPrice,
+        restock,
+        restock_location_id: restock ? l.restockLocationId || null : null,
+        restock_batch_id: restock ? l.restockBatchId || null : null,
+      };
+    })
+  );
+  if (linesError) return { error: linesError.message };
+
+  revalidatePath(`/sales/invoices/${salesInvoiceId}`);
+  revalidatePath("/sales/returns");
+  redirect(`/sales/returns/${ret.id}`);
+}
+
+export async function postSalesReturnAction(salesReturnId: string): Promise<ActionResult> {
+  await requireActiveTenant();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("post_sales_return", { p_sales_return_id: salesReturnId });
+  if (error) return { error: error.message };
+  revalidatePath(`/sales/returns/${salesReturnId}`);
+  return { success: true };
+}

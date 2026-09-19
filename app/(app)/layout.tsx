@@ -37,6 +37,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                   Sales
                 </Link>
                 <Link
+                  href="/inventory/adjustments"
+                  className="flex min-h-11 items-center px-2 hover:text-zinc-900 dark:hover:text-zinc-50"
+                >
+                  Inventory
+                </Link>
+                <Link
                   href="/settings/company"
                   className="flex min-h-11 items-center px-2 hover:text-zinc-900 dark:hover:text-zinc-50"
                 >
