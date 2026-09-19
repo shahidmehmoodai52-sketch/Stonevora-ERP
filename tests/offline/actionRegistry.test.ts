@@ -45,6 +45,11 @@ vi.mock("@/actions/manufacturing", () => ({
   completeProductionBatchAction: vi.fn(async () => ({ success: true }) as const),
   recordBatchQcInspectionAction: vi.fn(async () => ({ success: true }) as const),
 }));
+vi.mock("@/actions/reservations", () => ({
+  createReservationAction: vi.fn(async () => ({ success: true }) as const),
+  activateStockReservationAction: vi.fn(async () => ({ success: true }) as const),
+  convertReservationToSalesOrderAction: vi.fn(async () => ({ success: true }) as const),
+}));
 
 const { createDeliveryAction, generateInvoiceAction, createSalesReturnAction } = await import("@/actions/sales");
 const { createGoodsReceiptAction, createPurchaseReturnAction } = await import("@/actions/purchasing");
@@ -68,6 +73,11 @@ const {
   completeProductionBatchAction,
   recordBatchQcInspectionAction,
 } = await import("@/actions/manufacturing");
+const {
+  createReservationAction,
+  activateStockReservationAction,
+  convertReservationToSalesOrderAction,
+} = await import("@/actions/reservations");
 const { offlineActionRegistry } = await import("@/lib/offline/actionRegistry");
 
 function formDataWith(fields: Record<string, string>): FormData {
@@ -202,5 +212,23 @@ describe("offline action registry: extracting a bound id from a hidden field", (
     const formData = formDataWith({ __inventoryBatchId: "ib-999", outcome: "passed" });
     await offlineActionRegistry.recordBatchQcInspection(formData);
     expect(recordBatchQcInspectionAction).toHaveBeenCalledWith("ib-999", formData);
+  });
+
+  test("createReservation passes formData straight through, no bound id to extract", async () => {
+    const formData = formDataWith({ reservationNumber: "RES-1" });
+    await offlineActionRegistry.createReservation(formData);
+    expect(createReservationAction).toHaveBeenCalledWith(formData);
+  });
+
+  test("activateStockReservation reads __stockReservationId and calls the real action with (stockReservationId, formData)", async () => {
+    const formData = formDataWith({ __stockReservationId: "res-111", holdHours: "24" });
+    await offlineActionRegistry.activateStockReservation(formData);
+    expect(activateStockReservationAction).toHaveBeenCalledWith("res-111", formData);
+  });
+
+  test("convertReservationToSalesOrder reads __stockReservationId and calls the real action with (stockReservationId, formData)", async () => {
+    const formData = formDataWith({ __stockReservationId: "res-111", soNumber: "SO-9" });
+    await offlineActionRegistry.convertReservationToSalesOrder(formData);
+    expect(convertReservationToSalesOrderAction).toHaveBeenCalledWith("res-111", formData);
   });
 });

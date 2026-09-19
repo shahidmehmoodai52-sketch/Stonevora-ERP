@@ -846,6 +846,47 @@ verified before the next begins.
   existing function was modified). Automated regression coverage added in
   `tests/rls/phase5-showroom-reservations.test.ts`, mirroring every
   live-verified path above.
+- **Phase 5 UI — backfilling the screens for Showroom/Reservation** ✅: Phase
+  5 above shipped backend-only; this closes that gap with `/reservations`
+  (list/new/detail), gated the same way `/factory`/`/projects`/
+  `/manufacturing` are (`release_stock_reservation` deliberately skips the
+  RPC-level capability check, matching `cancel_processing_job`/
+  `cancel_production_batch`'s precedent — the layout gate is UX only either
+  way). The new-reservation line picker filters out unit-tracked products,
+  matching `activate_stock_reservation`'s own rejection rule. The detail
+  page renders one of four bodies by `status`: `draft` gets the activate
+  form; `active` gets a release button plus the convert-to-sales-order
+  form; `converted` links straight to the resulting `/sales/orders/[id]`;
+  `released` is a dead end with nothing left to do. Live-verified end to
+  end through the exact UI-shaped RPC calls (a fresh tenant with the
+  capability enabled, via `execute_sql`): activating a reservation across
+  one simple-tracked and one batch-tracked line correctly reserved both
+  (`reserved_qty` +10 and +5) and locked `base_quantity` per line;
+  converting created a `confirmed` sales order with matching
+  `reserved_quantity`/`base_quantity` on its lines while leaving
+  `reserved_qty` on the underlying stock rows **completely unchanged**
+  (10 and 5, not 20 and 10) — proving the "don't double-reserve" claim in
+  the RPC's own comment; the resulting order was then pushed through
+  Phase 1's **unmodified** `dispatch_delivery`, which correctly decremented
+  `qty_on_hand` and zeroed `reserved_qty` on both rows, confirming the
+  hand-off is functionally complete end to end, not just at the database
+  row level. Edge/rejection paths: a unit-tracked product rejected on
+  activation; `hold_hours = 0` rejected; insufficient stock rejected;
+  re-activating an already-active reservation rejected; releasing an
+  active reservation correctly returned its held stock to zero without
+  ever creating a sales order (`sales_order_id` stayed null); an activated
+  reservation with its `expires_at` moved into the past was correctly
+  blocked from conversion ("has expired") while `release_stock_reservation`
+  still succeeded on it regardless — proving the documented "expiry is
+  checked, not swept" design actually behaves that way. Security: RLS
+  denied a Viewer-role user's `stock_reservations` insert; a Viewer-role
+  user's direct `activate_stock_reservation` RPC call rejected with
+  `Missing permission: sales.edit` (`convert_reservation_to_sales_order`
+  shares the identical `has_permission` call, verified by code review).
+  `get_advisors` (security) showed only the same pre-existing,
+  already-accepted findings — nothing new. Test tenant and both test users
+  fully torn down after verification, confirmed empty by a final count
+  query.
 - **Phase 6 — Accounting depth** ✅: Chart of Accounts + a real double-entry
   ledger + P&L/Balance Sheet reporting. Unlike every prior phase (one new
   business workflow reusing an existing permission resource), accounting is

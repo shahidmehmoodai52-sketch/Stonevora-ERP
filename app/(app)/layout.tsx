@@ -61,6 +61,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                   Manufacturing
                 </Link>
                 <Link
+                  href="/reservations"
+                  className="flex min-h-11 items-center px-2 hover:text-zinc-900 dark:hover:text-zinc-50"
+                >
+                  Reservations
+                </Link>
+                <Link
                   href="/settings/company"
                   className="flex min-h-11 items-center px-2 hover:text-zinc-900 dark:hover:text-zinc-50"
                 >

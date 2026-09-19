@@ -30,6 +30,11 @@ import {
   completeProductionBatchAction,
   recordBatchQcInspectionAction,
 } from "@/actions/manufacturing";
+import {
+  createReservationAction,
+  activateStockReservationAction,
+  convertReservationToSalesOrderAction,
+} from "@/actions/reservations";
 
 // A queued outbox item stores an actionKey (a stable string), not the
 // Server Action function itself -- functions aren't serializable, and a
@@ -93,6 +98,11 @@ export const offlineActionRegistry: Record<
     completeProductionBatchAction(String(formData.get("__productionBatchId") ?? ""), formData),
   recordBatchQcInspection: (formData) =>
     recordBatchQcInspectionAction(String(formData.get("__inventoryBatchId") ?? ""), formData),
+  createReservation: createReservationAction,
+  activateStockReservation: (formData) =>
+    activateStockReservationAction(String(formData.get("__stockReservationId") ?? ""), formData),
+  convertReservationToSalesOrder: (formData) =>
+    convertReservationToSalesOrderAction(String(formData.get("__stockReservationId") ?? ""), formData),
 };
 
 export type OfflineActionKey = keyof typeof offlineActionRegistry;
