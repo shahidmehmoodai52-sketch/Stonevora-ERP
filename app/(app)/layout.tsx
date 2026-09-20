@@ -67,6 +67,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                   Reservations
                 </Link>
                 <Link
+                  href="/reports"
+                  className="flex min-h-11 items-center px-2 hover:text-zinc-900 dark:hover:text-zinc-50"
+                >
+                  Reports
+                </Link>
+                <Link
                   href="/accounting/chart-of-accounts"
                   className="flex min-h-11 items-center px-2 hover:text-zinc-900 dark:hover:text-zinc-50"
                 >

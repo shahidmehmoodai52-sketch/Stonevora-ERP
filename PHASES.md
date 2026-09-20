@@ -1314,6 +1314,57 @@ verified before the next begins.
   directly and cross-checked. Automated regression coverage added in
   `tests/rls/phase8-reporting-dashboards.test.ts`, mirroring every
   live-verified path above.
+- **Phase 8 UI — backfilling the screens for Reporting/Dashboards** ✅: six
+  read-only report pages under a new `/reports` section (no capability gate
+  — always-on core, same reasoning as `/accounting`), all Server Components
+  calling the RPCs directly via `supabase.rpc(...)` with no `actions/` file
+  at all — every one of these eight RPCs is a pure read, so there is
+  nothing to mutate and nothing for a Server Action to guard.
+  `/reports` (Dashboard) is a branch+date-range GET filter driving a KPI
+  tile grid over `get_dashboard_summary`'s 8 fields.
+  `/reports/sales` combines all three sales RPCs behind one filter —
+  `get_sales_summary` as tiles, `get_top_customers`/`get_top_products` as
+  two side-by-side tables — since all three share the identical
+  `(tenant, branch, start, end)` signature and exist to answer the same
+  "how did sales do" question together. `/reports/inventory-valuation` and
+  `/reports/low-stock` are unfiltered tables (tenant-wide, no branch
+  parameter — the underlying RPCs themselves take none, per Phase 8's own
+  documented reasoning that `inventory_stock`/`inventory_batches` carry no
+  branch dimension to filter by). `/reports/receivables-aging` (branch
+  filter) and `/reports/payables-aging` (tenant-wide, no filter — mirroring
+  `get_payables_aging`'s own signature, since `purchase_invoices` has no
+  `branch_id` column) both render the standard current/1-30/31-60/61-90/90+
+  aging buckets with a computed total row.
+  Live-verified against a fresh test tenant running the same purchase-to-
+  cash + sale-to-cash trading loop as Phase 8's own backend verification
+  (GRN of 100 units at cost 20; a 60-unit sale at 30; a partial $700
+  customer receipt; a manually-inserted, partially-paid $2000 purchase
+  invoice): every one of the 8 RPC calls, called exactly as each page
+  itself calls them, matched hand calculation exactly —
+  `get_dashboard_summary` (revenue 1800, COGS 1200, gross profit 600,
+  receivables 1100, payables 1500, low-stock count 1),
+  `get_sales_summary`/`get_top_customers`/`get_top_products` (1 order, 1
+  invoice, $1800, the single test customer/product each),
+  `get_inventory_valuation` (40 units × $20 avg cost = $800),
+  `get_low_stock_report` (shortfall of
+  10 against the 50-unit `reorder_point`), `get_receivables_aging`/
+  `get_payables_aging` ($1100/$1500 outstanding, both in the `current`
+  bucket for a same-day invoice). Permission-denial rejection verified for
+  a Viewer-role user on both `view_financial`/`view_cost`-gated RPCs
+  (`get_dashboard_summary` → `accounting.view_financial`,
+  `get_inventory_valuation` → `product.view_cost`), while the same Viewer
+  confirmed still able to call the `view`-gated reports
+  (`get_sales_summary`, `get_low_stock_report`) — reusing the exact
+  permission-shape verification Phase 8's own backend testing already
+  established, exercised here through the real page-level RPC calls rather
+  than re-deriving the permission matrix from scratch. `get_advisors`
+  (security) showed only the same pre-existing, already-accepted findings
+  — nothing new. Test tenant and both test users fully torn down after
+  verification, confirmed empty by a final count query. `npx tsc --noEmit`,
+  `npm run lint`, `npx vitest run` (36 passing, unchanged — no new offline
+  actions, since every report here is read-only), and `npm run build` all
+  clean before commit; all 6 new report routes registered as dynamic (`ƒ`)
+  pages.
 - **Phase 9 — Offline-first + Desktop + Mobile + SEO**: decisions locked in
   with the user so this doesn't need re-litigating later; started only once
   the full functional roadmap above (Phase 1.x through Phase 8) was
