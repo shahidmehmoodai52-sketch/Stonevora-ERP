@@ -50,6 +50,10 @@ vi.mock("@/actions/reservations", () => ({
   activateStockReservationAction: vi.fn(async () => ({ success: true }) as const),
   convertReservationToSalesOrderAction: vi.fn(async () => ({ success: true }) as const),
 }));
+vi.mock("@/actions/accounting", () => ({
+  createChartOfAccountAction: vi.fn(async () => ({ success: true }) as const),
+  postJournalEntryAction: vi.fn(async () => ({ success: true }) as const),
+}));
 
 const { createDeliveryAction, generateInvoiceAction, createSalesReturnAction } = await import("@/actions/sales");
 const { createGoodsReceiptAction, createPurchaseReturnAction } = await import("@/actions/purchasing");
@@ -78,6 +82,7 @@ const {
   activateStockReservationAction,
   convertReservationToSalesOrderAction,
 } = await import("@/actions/reservations");
+const { createChartOfAccountAction, postJournalEntryAction } = await import("@/actions/accounting");
 const { offlineActionRegistry } = await import("@/lib/offline/actionRegistry");
 
 function formDataWith(fields: Record<string, string>): FormData {
@@ -230,5 +235,17 @@ describe("offline action registry: extracting a bound id from a hidden field", (
     const formData = formDataWith({ __stockReservationId: "res-111", soNumber: "SO-9" });
     await offlineActionRegistry.convertReservationToSalesOrder(formData);
     expect(convertReservationToSalesOrderAction).toHaveBeenCalledWith("res-111", formData);
+  });
+
+  test("createChartOfAccount passes formData straight through, no bound id to extract", async () => {
+    const formData = formDataWith({ code: "1050", name: "Petty Cash" });
+    await offlineActionRegistry.createChartOfAccount(formData);
+    expect(createChartOfAccountAction).toHaveBeenCalledWith(formData);
+  });
+
+  test("postJournalEntry passes formData straight through, no bound id to extract", async () => {
+    const formData = formDataWith({ branchId: "branch-1" });
+    await offlineActionRegistry.postJournalEntry(formData);
+    expect(postJournalEntryAction).toHaveBeenCalledWith(formData);
   });
 });

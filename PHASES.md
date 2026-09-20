@@ -992,6 +992,85 @@ verified before the next begins.
   phase's own test setup. Automated regression coverage added in
   `tests/rls/phase6-accounting.test.ts`, mirroring every live-verified path
   above.
+- **Phase 6 UI — backfilling the screens for Accounting** ✅: `/accounting`
+  layout with no capability gate (unlike Factory/Projects/Manufacturing/
+  Reservations, accounting is always-on core, not an opt-in
+  `business_capabilities` module — same reasoning as Trading/Distribution).
+  `/accounting/chart-of-accounts` lists every account (code/name/type/
+  system/active) and a `NewAccountForm` to add a custom one.
+  `/accounting/journal-entries` lists entries (flagging `(reversal)` when
+  `reverses_entry_id` is set) and links to `/new`, whose
+  `NewJournalEntryForm` is a dynamic debit/credit line editor (starting at
+  2 rows, matching the RPC's own "at least 2 lines" requirement) with a
+  live client-side running balance indicator (green once total debit =
+  total credit and > 0) and a same-row debit/credit mutual-exclusion
+  `onChange` (typing in one clears the other). The detail page
+  (`/accounting/journal-entries/[id]`) shows posted lines with a computed
+  total row, and a `ReverseJournalEntryForm` — hidden once a query for
+  `reverses_entry_id = this id` finds a match, so an already-reversed entry
+  shows "already reversed" instead of a form that would just fail
+  server-side. Both report pages
+  (`/accounting/reports/profit-and-loss`, `.../balance-sheet`) are
+  GET-form-driven (branch + date range/as-of-date, defaulting to
+  month-to-date and today respectively) calling `get_profit_and_loss`/
+  `get_balance_sheet` directly via `supabase.rpc`; the balance sheet page
+  also renders a live "Balanced — Assets = Liabilities + Equity" / "Out of
+  balance" indicator computed client-side from the same synthetic Current
+  Period Earnings row Phase 6's backend added.
+  **Offline wiring decision**: unlike the Settings screens (deliberately
+  excluded — "no realistic no-signal scenario... silently deferring a
+  permission/role change is the wrong default"), chart-of-account creation
+  and manual journal-entry posting *were* wired into the offline outbox
+  (`createChartOfAccount`/`postJournalEntry` in
+  `lib/offline/actionRegistry.ts`, both "straight through" — no bound id to
+  extract). The distinguishing question isn't "is this Settings" but "is
+  there a realistic no-signal scenario for this action" — recording a
+  transaction at a site with poor connectivity is exactly the scenario the
+  offline outbox exists for (the same reasoning that already put customer/
+  supplier payment recording in the outbox back in Phase 1.x), whereas a
+  permission/role change is not.
+  A TypeScript type mismatch surfaced only at compile time, not in code
+  review: the generated Supabase RPC types mark `post_journal_entry`'s
+  `p_entry_date`/`p_description` and `reverse_journal_entry`'s `p_reason`
+  as required `string` (not `string | null`), even though the SQL function
+  bodies accept `null` (`coalesce(p_entry_date, current_date)`) — the
+  opposite of the `|| undefined` pattern hit in Phase 2's
+  `recordQcInspectionAction` for a genuinely optional param. Fixed by
+  defaulting `entryDate` to today's date client-side (matching what the
+  RPC would default to anyway) rather than fighting the generated type.
+  A `react-hooks/static-components` lint error (a JSX component function
+  defined inline inside the balance sheet page's render body, one that
+  ESLint correctly flags as re-created — and so losing any state — on every
+  render) was fixed by hoisting it to a module-level `renderSection()`
+  helper called as a plain function rather than rendered as a component
+  tag.
+  Live-verified against a fresh test tenant: chart-of-account creation;
+  `protect_system_account` blocking a code change and a delete on a system
+  account while allowing both on a custom one; `post_journal_entry`
+  rejecting an unbalanced entry (debit 100 vs credit 90) and successfully
+  posting a balanced one; `reverse_journal_entry` producing the exact
+  mirror image (debit/credit swapped) and rejecting a second reversal
+  attempt on the same entry; RLS denial and `accounting.create`/
+  `view_financial` in-body RPC denial for a Viewer-role user; branch-scoped
+  rejection for a user whose Accountant role was restricted to a second
+  branch (blocked posting to the tenant's main branch, succeeded posting to
+  their own); `get_profit_and_loss`/`get_balance_sheet` cross-checked
+  against a hand-computed trading loop (revenue 500, expense 0 after a
+  posted-then-reversed entry net to zero, assets 500 = liabilities 0 +
+  equity 500 via the synthetic Current Period Earnings row — the
+  accounting identity holds exactly); the full auto-posting trigger chain
+  from Phase 6's backend re-verified end to end on a real GRN → SO confirm
+  → dispatch → invoice → customer payment → supplier payment loop (Dr
+  Inventory/Cr AP 200 on receipt; Dr AR/Cr Revenue 300 and Dr COGS/Cr
+  Inventory 100 on invoicing; Dr Cash/Cr AR 300 on customer payment; Dr
+  AP/Cr Cash 200 on supplier payment — all exactly matching hand
+  calculation). `get_advisors` (security) showed only the same
+  pre-existing, already-accepted findings — nothing new. Test tenant and
+  all three test users (owner, viewer, branch-limited accountant) fully
+  torn down after verification, confirmed empty by a final count query.
+  `npx tsc --noEmit`, `npm run lint`, `npx vitest run` (35 passing, up from
+  33), and `npm run build` all clean before commit; all 6 new accounting
+  routes registered as dynamic (`ƒ`) pages.
 - **Phase 7 — QR/Mobile/barcode** ✅: backend/data layer for scanning flows
   and a barcode/QR generator, scoped per explicit user decision — camera-
   based scanning UI is a separate, later pass this session cannot verify

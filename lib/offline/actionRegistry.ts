@@ -35,6 +35,7 @@ import {
   activateStockReservationAction,
   convertReservationToSalesOrderAction,
 } from "@/actions/reservations";
+import { createChartOfAccountAction, postJournalEntryAction } from "@/actions/accounting";
 
 // A queued outbox item stores an actionKey (a stable string), not the
 // Server Action function itself -- functions aren't serializable, and a
@@ -103,6 +104,8 @@ export const offlineActionRegistry: Record<
     activateStockReservationAction(String(formData.get("__stockReservationId") ?? ""), formData),
   convertReservationToSalesOrder: (formData) =>
     convertReservationToSalesOrderAction(String(formData.get("__stockReservationId") ?? ""), formData),
+  createChartOfAccount: createChartOfAccountAction,
+  postJournalEntry: postJournalEntryAction,
 };
 
 export type OfflineActionKey = keyof typeof offlineActionRegistry;
