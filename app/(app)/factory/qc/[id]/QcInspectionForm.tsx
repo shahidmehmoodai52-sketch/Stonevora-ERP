@@ -15,8 +15,11 @@ export function QcInspectionForm({ inventoryUnitId }: { inventoryUnitId: string 
       <label className="flex flex-col gap-1 text-sm">
         Outcome
         <select name="outcome" defaultValue="passed" required className="input">
-          <option value="passed">Passed</option>
-          <option value="rejected">Rejected</option>
+          <option value="passed">Pass</option>
+          <option value="failed">Fail</option>
+          <option value="rework">Rework</option>
+          <option value="scrap">Scrap</option>
+          <option value="hold">Hold</option>
         </select>
       </label>
       <label className="flex flex-col gap-1 text-sm">

@@ -171,8 +171,9 @@ export async function recordBatchQcInspectionAction(
   await requirePermission(tenant.tenantId, "production", "approve");
 
   const outcome = String(formData.get("outcome") ?? "");
-  if (outcome !== "passed" && outcome !== "rejected") {
-    return { error: "Outcome must be passed or rejected" };
+  const outcomes = ["passed", "failed", "rework", "scrap", "hold"] as const;
+  if (!outcomes.includes(outcome as (typeof outcomes)[number])) {
+    return { error: "Outcome must be passed, failed, rework, scrap, or hold" };
   }
   const confirmedGrade = String(formData.get("confirmedGrade") ?? "").trim();
   const defects = String(formData.get("defects") ?? "").trim();
@@ -181,7 +182,7 @@ export async function recordBatchQcInspectionAction(
   const supabase = await createClient();
   const { error } = await supabase.rpc("record_batch_qc_inspection", {
     p_inventory_batch_id: inventoryBatchId,
-    p_outcome: outcome,
+    p_outcome: outcome as (typeof outcomes)[number],
     p_confirmed_grade: confirmedGrade || undefined,
     p_defects: defects || undefined,
     p_notes: notes || undefined,

@@ -16,9 +16,9 @@ export default async function BatchQcQueuePage({
 
   const { data: batches, count } = await supabase
     .from("inventory_batches")
-    .select("id, batch_number, qty_on_hand, shade_code, caliber_code, products(sku, name), production_batches(batch_number)", { count: "exact" })
+    .select("id, batch_number, status, qty_on_hand, shade_code, caliber_code, products(sku, name), production_batches(batch_number)", { count: "exact" })
     .eq("tenant_id", tenant.tenantId)
-    .eq("status", "pending_qc")
+    .in("status", ["pending_qc", "needs_rework", "on_hold"])
     .order("created_at", { ascending: false })
     .range(from, to);
 

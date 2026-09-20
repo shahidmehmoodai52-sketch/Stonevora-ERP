@@ -192,7 +192,7 @@ describe.skipIf(!hasServiceRoleKey)("Phase 4: Tile Manufacturing", () => {
     });
 
     const { error: qcErr } = await owner.client.rpc("record_batch_qc_inspection", {
-      p_inventory_batch_id: outputBatchId!, p_outcome: "rejected", p_defects: "Cracked tiles", p_notes: "Kiln temp too high",
+      p_inventory_batch_id: outputBatchId!, p_outcome: "failed", p_defects: "Cracked tiles", p_notes: "Kiln temp too high",
     });
     expect(qcErr).toBeNull();
 

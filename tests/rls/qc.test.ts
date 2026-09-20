@@ -144,7 +144,7 @@ describe.skipIf(!hasServiceRoleKey)("Factory Milestone 5: QC", () => {
     const slabId = await makePendingQcSlab("REJECT");
     const { error } = await owner.client.rpc("record_qc_inspection", {
       p_inventory_unit_id: slabId,
-      p_outcome: "rejected",
+      p_outcome: "failed",
       p_confirmed_grade: "D",
       p_defects: "Visible crack across full width",
     });
@@ -161,7 +161,59 @@ describe.skipIf(!hasServiceRoleKey)("Factory Milestone 5: QC", () => {
 
     const { error } = await owner.client.rpc("record_qc_inspection", { p_inventory_unit_id: slabId, p_outcome: "passed" });
     expect(error).not.toBeNull();
-    expect(error?.message).toMatch(/not pending QC/);
+    expect(error?.message).toMatch(/not awaiting QC/);
+  });
+
+  test("rework and hold move the unit into a re-inspectable status, unlike scrap", async () => {
+    const reworkSlabId = await makePendingQcSlab("REWORK");
+    const { error: reworkError } = await owner.client.rpc("record_qc_inspection", {
+      p_inventory_unit_id: reworkSlabId,
+      p_outcome: "rework",
+      p_defects: "Edge chipped during polishing",
+    });
+    expect(reworkError).toBeNull();
+    const { data: reworkUnit } = await owner.client.from("inventory_units").select("status").eq("id", reworkSlabId).single();
+    expect(reworkUnit?.status).toBe("needs_rework");
+
+    // Re-inspection is allowed from needs_rework, and this time it passes.
+    const { error: secondPassError } = await owner.client.rpc("record_qc_inspection", {
+      p_inventory_unit_id: reworkSlabId,
+      p_outcome: "passed",
+      p_confirmed_grade: "B+",
+    });
+    expect(secondPassError).toBeNull();
+    const { data: reworkUnitAfter } = await owner.client.from("inventory_units").select("status, quality_grade").eq("id", reworkSlabId).single();
+    expect(reworkUnitAfter?.status).toBe("in_stock");
+    expect(reworkUnitAfter?.quality_grade).toBe("B+");
+
+    const holdSlabId = await makePendingQcSlab("HOLD");
+    const { error: holdError } = await owner.client.rpc("record_qc_inspection", {
+      p_inventory_unit_id: holdSlabId,
+      p_outcome: "hold",
+      p_notes: "Awaiting customer confirmation on grade",
+    });
+    expect(holdError).toBeNull();
+    const { data: heldUnit } = await owner.client.from("inventory_units").select("status").eq("id", holdSlabId).single();
+    expect(heldUnit?.status).toBe("on_hold");
+
+    // A second inspection from on_hold is also allowed.
+    const { error: secondHoldError } = await owner.client.rpc("record_qc_inspection", { p_inventory_unit_id: holdSlabId, p_outcome: "hold" });
+    expect(secondHoldError).toBeNull();
+
+    const scrapSlabId = await makePendingQcSlab("SCRAP");
+    const { error: scrapError } = await owner.client.rpc("record_qc_inspection", {
+      p_inventory_unit_id: scrapSlabId,
+      p_outcome: "scrap",
+      p_defects: "Unusable -- through crack",
+    });
+    expect(scrapError).toBeNull();
+    const { data: scrappedUnit } = await owner.client.from("inventory_units").select("status").eq("id", scrapSlabId).single();
+    expect(scrappedUnit?.status).toBe("scrapped");
+
+    // Scrap is terminal, like passed/failed -- no re-inspection.
+    const { error: scrapReinspectError } = await owner.client.rpc("record_qc_inspection", { p_inventory_unit_id: scrapSlabId, p_outcome: "passed" });
+    expect(scrapReinspectError).not.toBeNull();
+    expect(scrapReinspectError?.message).toMatch(/not awaiting QC/);
   });
 
   test("a block cannot be QC-inspected", async () => {

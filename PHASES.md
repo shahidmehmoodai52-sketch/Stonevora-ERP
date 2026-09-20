@@ -1886,3 +1886,72 @@ verified before the next begins.
   confirmed empty by a final count query. `get_advisors` (security) showed
   only the same pre-existing, already-accepted baseline — no new findings
   (no schema was touched by this pass, only application-layer queries).
+- **Expand QC outcomes to PASS/FAIL/REWORK/SCRAP/HOLD** ✅: closes the
+  second real gap found by this session's own 36-part spec audit — Part
+  17 asks for the industry-standard 5-outcome QC gate, but Milestone 5's
+  original implementation was a deliberate, documented simplification to
+  a binary passed/rejected decision with each unit inspectable exactly
+  once.
+  **Migration** (`supabase/migrations/0054_qc_outcomes_expansion.sql`):
+  `qc_outcome`'s `rejected` value renamed to `failed` (a straight rename,
+  not a parallel synonym — this is pre-launch schema with no real tenant
+  data) and three new values added (`rework`, `scrap`, `hold`);
+  `inventory_unit_status` and `inventory_batch_status` each gain three
+  matching values (`needs_rework`, `scrapped`, `on_hold`).
+  `record_qc_inspection`/`record_batch_qc_inspection` are rewritten with
+  the same permission/branch/capability checks as before, now mapping all
+  5 outcomes (`passed`→`in_stock`, `failed`→`rejected`, `rework`→
+  `needs_rework`, `scrap`→`scrapped`, `hold`→`on_hold`) and loosening the
+  "already inspected" gate from `status <> 'pending_qc'` to
+  `status not in ('pending_qc', 'needs_rework', 'on_hold')` — a unit sent
+  to rework or put on hold can be inspected again later, while
+  passed/failed/scrapped stay terminal exactly like the original
+  passed/rejected pair did. No new "rework job" subsystem or changed
+  processing-job workflow was invented — rework/hold are just their own
+  re-inspectable inventory statuses, deliberately the smallest change
+  that satisfies the spec.
+  **Application layer**: both QC inspection forms
+  (`app/(app)/factory/qc/[id]/QcInspectionForm.tsx`,
+  `.../manufacturing/qc/[id]/BatchQcInspectionForm.tsx`) now offer all 5
+  outcomes; both Server Actions (`recordQcInspectionAction`,
+  `recordBatchQcInspectionAction`) validate against the full 5-value set
+  instead of the old binary check; both detail pages now show the
+  inspection form for `pending_qc`, `needs_rework`, or `on_hold` (not
+  only `pending_qc`); both QC queue list pages now select
+  `status in (pending_qc, needs_rework, on_hold)` instead of
+  `= pending_qc`, so a unit sent back for rework or put on hold
+  reappears in the queue for its next inspection.
+  **Live-verified** against a fresh test tenant on the real Supabase
+  project (`kfxjdgijquselbfprxxv`): a block was cut into 5 pending-QC
+  slabs and each of the 5 outcomes was exercised through
+  `record_qc_inspection` directly — statuses landed exactly as mapped
+  (`in_stock`/`rejected`/`needs_rework`/`scrapped`/`on_hold`), the
+  `passed` outcome's confirmed grade correctly overrode the
+  operator's original grade while the other outcomes left it untouched.
+  Re-inspection was then exercised end-to-end: the `needs_rework` unit
+  was re-inspected and passed (grade updated to the new confirmed
+  grade, status moved to `in_stock`), the `on_hold` unit was re-inspected
+  a second time successfully, and the `scrapped` unit's re-inspection
+  attempt was correctly rejected with "not awaiting QC" — proving scrap
+  stays terminal like pass/fail while rework/hold don't. Two negative
+  security checks also ran live: a `failed` (terminal) unit's
+  re-inspection was rejected the same way, and calling the RPC with no
+  JWT claim set (so `auth.uid()` resolves to null) was correctly rejected
+  with "Missing permission: production.approve" rather than silently
+  succeeding. Every `qc_inspections` row for the test units was confirmed
+  present afterward, preserving the full inspection history across
+  re-inspections rather than overwriting it. The test tenant, its
+  branches/warehouse/product/blocks/jobs/units, and its test user were
+  fully torn down afterward, confirmed empty by a final count query.
+  `get_advisors` (security) showed only the same pre-existing baseline
+  already accepted for every other security-definer RPC in this codebase
+  (intentional in-body permission checks, not an RLS gap) — no new
+  findings from this migration. New test coverage was added to
+  `tests/rls/qc.test.ts` covering rework/hold re-inspection and scrap's
+  terminal state (skipped locally with the rest of the service-role-gated
+  suite, same as always, since this sandbox has no
+  `SUPABASE_SERVICE_ROLE_KEY`); the pre-existing tests referencing the
+  old `'rejected'` outcome literal and the old "not pending QC" error
+  wording were updated to match. `npx tsc --noEmit`, `npm run lint`,
+  `npx vitest run` (36 passing, unchanged locally), and `npm run build`
+  all clean.

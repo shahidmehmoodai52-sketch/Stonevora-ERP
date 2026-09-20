@@ -39,7 +39,7 @@ export default async function QcInspectionPage({ params }: { params: Promise<{ i
         </div>
       </dl>
 
-      {unit.status === "pending_qc" ? (
+      {["pending_qc", "needs_rework", "on_hold"].includes(unit.status) ? (
         <QcInspectionForm inventoryUnitId={unit.id} />
       ) : (
         <p className="text-sm text-zinc-500">Already inspected — current status: {unit.status}.</p>

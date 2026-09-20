@@ -35,7 +35,7 @@ export default async function BatchQcInspectionPage({ params }: { params: Promis
         </div>
       </dl>
 
-      {batch.status === "pending_qc" ? (
+      {["pending_qc", "needs_rework", "on_hold"].includes(batch.status) ? (
         <BatchQcInspectionForm inventoryBatchId={batch.id} />
       ) : (
         <p className="text-sm text-zinc-500">Already inspected — current status: {batch.status}.</p>

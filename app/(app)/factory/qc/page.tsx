@@ -16,9 +16,9 @@ export default async function QcQueuePage({
 
   const { data: units, count } = await supabase
     .from("inventory_units")
-    .select("id, unit_code, unit_type, actual_length, actual_width, actual_thickness, actual_area, quality_grade, products(sku, name), processing_jobs(job_number)", { count: "exact" })
+    .select("id, unit_code, unit_type, status, actual_length, actual_width, actual_thickness, actual_area, quality_grade, products(sku, name), processing_jobs(job_number)", { count: "exact" })
     .eq("tenant_id", tenant.tenantId)
-    .eq("status", "pending_qc")
+    .in("status", ["pending_qc", "needs_rework", "on_hold"])
     .order("created_at", { ascending: false })
     .range(from, to);
 

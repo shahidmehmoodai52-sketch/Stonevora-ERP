@@ -6054,7 +6054,13 @@ export type Database = {
         | "international"
       delivery_status: "draft" | "dispatched" | "delivered"
       goods_receipt_status: "draft" | "posted"
-      inventory_batch_status: "pending_qc" | "in_stock" | "rejected"
+      inventory_batch_status:
+        | "pending_qc"
+        | "in_stock"
+        | "rejected"
+        | "needs_rework"
+        | "scrapped"
+        | "on_hold"
       inventory_tracking_mode: "simple" | "batch" | "unit"
       inventory_unit_status:
         | "in_stock"
@@ -6062,6 +6068,9 @@ export type Database = {
         | "consumed"
         | "pending_qc"
         | "rejected"
+        | "needs_rework"
+        | "scrapped"
+        | "on_hold"
       inventory_unit_type: "block" | "slab" | "remnant"
       landed_cost_basis: "value" | "quantity"
       processing_job_status: "draft" | "in_progress" | "completed" | "cancelled"
@@ -6080,7 +6089,7 @@ export type Database = {
         | "received"
         | "cancelled"
       purchase_return_status: "draft" | "posted" | "cancelled"
-      qc_outcome: "passed" | "rejected"
+      qc_outcome: "passed" | "failed" | "rework" | "scrap" | "hold"
       sales_invoice_status:
         | "draft"
         | "posted"
@@ -6253,7 +6262,14 @@ export const Constants = {
       ],
       delivery_status: ["draft", "dispatched", "delivered"],
       goods_receipt_status: ["draft", "posted"],
-      inventory_batch_status: ["pending_qc", "in_stock", "rejected"],
+      inventory_batch_status: [
+        "pending_qc",
+        "in_stock",
+        "rejected",
+        "needs_rework",
+        "scrapped",
+        "on_hold",
+      ],
       inventory_tracking_mode: ["simple", "batch", "unit"],
       inventory_unit_status: [
         "in_stock",
@@ -6261,6 +6277,9 @@ export const Constants = {
         "consumed",
         "pending_qc",
         "rejected",
+        "needs_rework",
+        "scrapped",
+        "on_hold",
       ],
       inventory_unit_type: ["block", "slab", "remnant"],
       landed_cost_basis: ["value", "quantity"],
@@ -6282,7 +6301,7 @@ export const Constants = {
         "cancelled",
       ],
       purchase_return_status: ["draft", "posted", "cancelled"],
-      qc_outcome: ["passed", "rejected"],
+      qc_outcome: ["passed", "failed", "rework", "scrap", "hold"],
       sales_invoice_status: [
         "draft",
         "posted",

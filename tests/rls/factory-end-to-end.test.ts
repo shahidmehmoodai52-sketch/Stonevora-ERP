@@ -145,7 +145,7 @@ describe.skipIf(!hasServiceRoleKey)("Factory Milestone 7: End-to-End Verificatio
     const [slabAId, slabBId, remnantId] = slabIds;
     await owner.client.rpc("record_qc_inspection", { p_inventory_unit_id: slabAId, p_outcome: "passed", p_confirmed_grade: "A" });
     await owner.client.rpc("record_qc_inspection", { p_inventory_unit_id: slabBId, p_outcome: "passed", p_confirmed_grade: "A" });
-    await owner.client.rpc("record_qc_inspection", { p_inventory_unit_id: remnantId, p_outcome: "rejected", p_confirmed_grade: "D", p_defects: "Chipped corner" });
+    await owner.client.rpc("record_qc_inspection", { p_inventory_unit_id: remnantId, p_outcome: "failed", p_confirmed_grade: "D", p_defects: "Chipped corner" });
 
     const { data: unitsAfterQc } = await owner.client.from("inventory_units").select("id, status").in("id", slabIds);
     expect(unitsAfterQc!.find((u) => u.id === slabAId)?.status).toBe("in_stock");
