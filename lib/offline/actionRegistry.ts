@@ -12,6 +12,7 @@ import {
 } from "@/actions/purchasing";
 import { recordCustomerPaymentAction, recordSupplierPaymentAction } from "@/actions/payments";
 import { createStockAdjustmentAction } from "@/actions/inventory";
+import { createStocktakeAction } from "@/actions/stocktakes";
 import {
   createProcessingJobAction,
   completeProcessingJobAction,
@@ -106,6 +107,7 @@ export const offlineActionRegistry: Record<
     convertReservationToSalesOrderAction(String(formData.get("__stockReservationId") ?? ""), formData),
   createChartOfAccount: createChartOfAccountAction,
   postJournalEntry: postJournalEntryAction,
+  createStocktake: createStocktakeAction,
 };
 
 export type OfflineActionKey = keyof typeof offlineActionRegistry;

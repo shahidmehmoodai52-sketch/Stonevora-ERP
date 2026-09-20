@@ -27,6 +27,9 @@ vi.mock("@/actions/payments", () => ({
 vi.mock("@/actions/inventory", () => ({
   createStockAdjustmentAction: vi.fn(async () => ({ success: true }) as const),
 }));
+vi.mock("@/actions/stocktakes", () => ({
+  createStocktakeAction: vi.fn(async () => ({ success: true }) as const),
+}));
 vi.mock("@/actions/factory", () => ({
   createProcessingJobAction: vi.fn(async () => ({ success: true }) as const),
   completeProcessingJobAction: vi.fn(async () => ({ success: true }) as const),
@@ -59,6 +62,7 @@ const { createDeliveryAction, generateInvoiceAction, createSalesReturnAction } =
 const { createGoodsReceiptAction, createPurchaseReturnAction } = await import("@/actions/purchasing");
 const { recordCustomerPaymentAction, recordSupplierPaymentAction } = await import("@/actions/payments");
 const { createStockAdjustmentAction } = await import("@/actions/inventory");
+const { createStocktakeAction } = await import("@/actions/stocktakes");
 const {
   createProcessingJobAction,
   completeProcessingJobAction,
@@ -247,5 +251,11 @@ describe("offline action registry: extracting a bound id from a hidden field", (
     const formData = formDataWith({ branchId: "branch-1" });
     await offlineActionRegistry.postJournalEntry(formData);
     expect(postJournalEntryAction).toHaveBeenCalledWith(formData);
+  });
+
+  test("createStocktake passes formData straight through, no bound id to extract", async () => {
+    const formData = formDataWith({ stocktakeNumber: "STK-1" });
+    await offlineActionRegistry.createStocktake(formData);
+    expect(createStocktakeAction).toHaveBeenCalledWith(formData);
   });
 });

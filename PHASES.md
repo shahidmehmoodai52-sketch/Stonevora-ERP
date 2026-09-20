@@ -1139,6 +1139,72 @@ verified before the next begins.
   Automated regression coverage added in
   `tests/rls/phase7-scanning-and-stocktake.test.ts`, mirroring every
   live-verified path above.
+- **Phase 7 UI — backfilling the screens for Stocktake + barcode/QR** ✅:
+  `/inventory/stocktakes` list + `New stocktake` (branch/warehouse/notes plus
+  a `StocktakeLineItemsEditor` — a simplified sibling of
+  `AdjustmentLineItemsEditor.tsx`: same product/location-or-batch picker,
+  minus direction/quantity/cost since a stocktake plans *what* to count, not
+  by how much — that comes later from `record_stocktake_count`). The detail
+  page (`/inventory/stocktakes/[id]`) shows system/counted quantities and a
+  computed variance column (green/red/neutral), a "Start counting" button
+  when `draft`, an inline per-line `RecordCountForm` (bound via
+  `.bind(null, stocktakeLineId)`, the same pattern as
+  `ReverseJournalEntryForm.tsx`) once `counting`, and a "Post stocktake"
+  button gated on every line being counted (client-side hint only — the RPC
+  is still the real enforcement). A posted stocktake links to its generated
+  `stock_adjustments` document, or says "Perfect count — no adjustment was
+  needed" when the count found zero variance. **Barcode/QR generation**:
+  the product detail page now shows the assigned barcode once generated, or
+  a "Generate barcode" button (a `PostButton` calling
+  `generateProductBarcodeAction` directly — its signature already matches
+  `PostButton`'s `(id) => Promise<ActionResult>` shape with no wrapper
+  needed). **Scan lookup**: a new `/scan` screen — not the camera-based
+  scanner PHASES.md already scoped out of this round, but a manual
+  "type the code" form exercising the exact same `resolve_scanned_code` RPC
+  a real scanning screen would call, grouping results by match type
+  (product/storage location/inventory unit/batch) with the same untyped
+  read-only shape (`{matches}` instead of `{error}|{success}`) the
+  accounting reports use for `get_profit_and_loss`/`get_balance_sheet`.
+  **Offline wiring decision**: only `createStocktakeAction` was added to
+  the offline outbox (`createStocktake` in `actionRegistry.ts`) — matching
+  the existing, already-established rule that only *create* forms
+  (`ActionForm`) get offline-wired, never single-click state-transition
+  actions (`PostButton`): `postStockAdjustmentAction` was never in the
+  registry either, so `startStocktakeCountAction`/
+  `recordStocktakeCountAction`/`postStocktakeAction`/`cancelStocktakeAction`
+  staying out is continuing that rule, not a new gap.
+  Live-verified against a fresh test tenant: `start_stocktake_count`
+  correctly snapshotting `system_quantity` from live inventory for both a
+  simple-tracked product (100) and a batch-tracked product (50);
+  `record_stocktake_count` rejecting a negative count and correctly
+  recording both a shrinkage (100→90) and a found-surplus (50→55);
+  `post_stocktake` building exactly one `stock_adjustments` document
+  (`reason_code = 'count_correction'`) with the found line valued at the
+  batch's `cost_per_uom` (8) and the shrinkage line carrying no cost, then
+  correctly decrementing/incrementing live inventory to exactly 90/55; a
+  second post attempt on the same (now `posted`) stocktake rejected; a
+  fresh stocktake with an exact, no-variance count correctly posting with
+  `stock_adjustment_id = null` (adjustment creation skipped entirely, not
+  created-then-discarded); posting rejected while a line is still
+  uncounted; `cancel_stocktake` succeeding from both `draft` and `counting`
+  and rejected from `posted`; a unit-tracked product line correctly
+  rejected at `start_stocktake_count`; RLS denial and `warehouse.edit`
+  in-body RPC denial for a Viewer-role user (branch-scoping itself is the
+  identical `has_branch_access` call already live-verified in Phase 6 and
+  Phase 1.x, so it was accepted here via code review rather than
+  re-derived); `generate_product_barcode` producing a
+  real checksum-valid EAN-13 code, a second call on the same product
+  returning the identical code unchanged (idempotent, not regenerated), and
+  correctly denied for a Viewer; `resolve_scanned_code` correctly matching
+  a generated barcode to its product, a storage location by `code`, and an
+  inventory batch by `batch_number`, plus a clean empty result for an
+  unmatched code. `get_advisors` (security) showed only the same
+  pre-existing, already-accepted findings — nothing new. Test tenant and
+  both test users fully torn down after verification, confirmed empty by a
+  final count query. `npx tsc --noEmit`, `npm run lint`, `npx vitest run`
+  (36 passing, up from 35), and `npm run build` all clean before commit;
+  all 4 new routes (`/inventory/stocktakes`, `/inventory/stocktakes/new`,
+  `/inventory/stocktakes/[id]`, `/scan`) registered as dynamic (`ƒ`) pages.
 - **Phase 8 — Reporting/Dashboards** ✅: eight cross-module reporting RPCs,
   scoped per the same explicit decision Phase 7 made — backend/data layer
   this round, live-SQL-verified like every other phase; the actual

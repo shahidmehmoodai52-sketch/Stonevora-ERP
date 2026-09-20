@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { requireActiveTenant } from "@/lib/tenant/getActiveTenant";
 import { fetchPermissionSet, hasPermission } from "@/lib/auth/permissions";
 import { updateProductAction, deleteProductAction } from "@/actions/products";
+import { generateProductBarcodeAction } from "@/actions/scanning";
+import { PostButton } from "@/components/PostButton";
 import { ProductForm } from "../ProductForm";
 import { DeleteProductButton } from "./DeleteProductButton";
 
@@ -42,6 +44,20 @@ export default async function ProductDetailPage({
         </h1>
         {canDelete && (
           <DeleteProductButton productId={id} action={deleteProductAction} />
+        )}
+      </div>
+      <div className="mb-6 flex items-center gap-3 text-sm">
+        {product.barcode ? (
+          <span className="text-zinc-600 dark:text-zinc-400">
+            Barcode: <span className="font-mono text-zinc-900 dark:text-zinc-50">{product.barcode}</span>
+          </span>
+        ) : (
+          <PostButton
+            id={id}
+            action={generateProductBarcodeAction}
+            label="Generate barcode"
+            pendingLabel="Generating…"
+          />
         )}
       </div>
       <ProductForm
