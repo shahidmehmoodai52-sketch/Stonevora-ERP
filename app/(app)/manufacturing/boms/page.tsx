@@ -1,16 +1,25 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveTenant } from "@/lib/tenant/getActiveTenant";
+import { parsePage, pageRange } from "@/lib/pagination";
+import { Pagination } from "@/components/Pagination";
 
-export default async function BomsPage() {
+export default async function BomsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const tenant = await requireActiveTenant();
   const supabase = await createClient();
+  const page = parsePage(await searchParams);
+  const [from, to] = pageRange(page);
 
-  const { data: boms } = await supabase
+  const { data: boms, count } = await supabase
     .from("bill_of_materials")
-    .select("id, bom_number, name, output_quantity, is_active, products(sku, name)")
+    .select("id, bom_number, name, output_quantity, is_active, products(sku, name)", { count: "exact" })
     .eq("tenant_id", tenant.tenantId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range(from, to);
 
   return (
     <div>
@@ -54,6 +63,7 @@ export default async function BomsPage() {
           </tbody>
         </table>
       </div>
+      <Pagination currentPage={page} totalCount={count ?? 0} basePath="/manufacturing/boms" />
     </div>
   );
 }

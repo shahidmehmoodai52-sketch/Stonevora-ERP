@@ -1,16 +1,25 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveTenant } from "@/lib/tenant/getActiveTenant";
+import { parsePage, pageRange } from "@/lib/pagination";
+import { Pagination } from "@/components/Pagination";
 
-export default async function ProductionBatchesPage() {
+export default async function ProductionBatchesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const tenant = await requireActiveTenant();
   const supabase = await createClient();
+  const page = parsePage(await searchParams);
+  const [from, to] = pageRange(page);
 
-  const { data: batches } = await supabase
+  const { data: batches, count } = await supabase
     .from("production_batches")
-    .select("id, batch_number, status, kiln_number, planned_output_quantity, actual_output_quantity, bill_of_materials(bom_number, products(sku, name))")
+    .select("id, batch_number, status, kiln_number, planned_output_quantity, actual_output_quantity, bill_of_materials(bom_number, products(sku, name))", { count: "exact" })
     .eq("tenant_id", tenant.tenantId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range(from, to);
 
   return (
     <div>
@@ -54,6 +63,7 @@ export default async function ProductionBatchesPage() {
           </tbody>
         </table>
       </div>
+      <Pagination currentPage={page} totalCount={count ?? 0} basePath="/manufacturing/batches" />
     </div>
   );
 }

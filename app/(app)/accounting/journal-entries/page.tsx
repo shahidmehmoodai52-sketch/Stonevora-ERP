@@ -1,16 +1,25 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveTenant } from "@/lib/tenant/getActiveTenant";
+import { parsePage, pageRange } from "@/lib/pagination";
+import { Pagination } from "@/components/Pagination";
 
-export default async function JournalEntriesPage() {
+export default async function JournalEntriesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const tenant = await requireActiveTenant();
   const supabase = await createClient();
+  const page = parsePage(await searchParams);
+  const [from, to] = pageRange(page);
 
-  const { data: entries } = await supabase
+  const { data: entries, count } = await supabase
     .from("journal_entries")
-    .select("id, entry_date, reference_type, description, reverses_entry_id")
+    .select("id, entry_date, reference_type, description, reverses_entry_id", { count: "exact" })
     .eq("tenant_id", tenant.tenantId)
-    .order("entry_date", { ascending: false });
+    .order("entry_date", { ascending: false })
+    .range(from, to);
 
   return (
     <div>
@@ -50,6 +59,7 @@ export default async function JournalEntriesPage() {
           </tbody>
         </table>
       </div>
+      <Pagination currentPage={page} totalCount={count ?? 0} basePath="/accounting/journal-entries" />
     </div>
   );
 }

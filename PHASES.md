@@ -1824,3 +1824,65 @@ verified before the next begins.
   correct `<title>` tag. `npx tsc --noEmit` and `npm run lint` both clean.
   The temporary preview server was stopped and its downloaded PNGs deleted
   afterward.
+- **Server-side pagination for transactional list screens** ✅: closes the
+  real gap this session's own honest 36-part spec audit found — Part 35
+  ("Performance") explicitly asks for server-side pagination at
+  "hundreds of thousands of slabs" scale, and before this pass not a
+  single list screen in the app used it; every one loaded its entire
+  table in one unbounded query.
+  **Shared building blocks**: `lib/pagination.ts` (`PAGE_SIZE = 25`,
+  `parsePage()` — safely clamps any input, including missing/`NaN`/zero/
+  negative/decimal/absurdly-large values, to a valid page ≥ 1 with no
+  crash and no negative offset — and `pageRange()`, converting a page
+  number into the `[from, to]` pair `supabase-js`'s `.range()` expects)
+  and `components/Pagination.tsx` (a plain server-rendered Previous/Next
+  pager with a "Page X of Y (N total)" label, returning `null` — rendering
+  nothing — when everything already fits on one page).
+  **Applied to 20 list screens**, every one carrying the identical
+  transformation: `searchParams: Promise<{ page?: string }>` added to the
+  page's props, the existing `.select(...)` call gains a
+  `{ count: "exact" }` second argument and a `.range(from, to)` chained
+  after `.order(...)`, and a `<Pagination>` renders after the table.
+  Products, Purchase Orders, Suppliers, Purchase Returns, Sales Orders,
+  Customers, Sales Invoices, Price Lists, Sales Returns, Stock
+  Adjustments, Stocktakes, Factory Blocks, Factory Processing Jobs,
+  Factory QC Queue, Projects, Manufacturing BOMs, Production Batches,
+  Manufacturing QC Queue, Reservations, and Journal Entries.
+  **Deliberately left unpaginated, with reasons** (not an oversight):
+  Chart of Accounts — a tenant's chart of accounts is inherently bounded
+  (dozens to a few hundred rows, not a transactional record that grows
+  without limit) and the same query result also populates the "parent
+  account" dropdown on the same page's create-account form, where
+  paginating the table would silently make parent accounts outside the
+  current page impossible to select — a real functional regression, not
+  worth trading for a report this list will never actually need. Settings
+  screens (branches, warehouses, roles, users, capabilities, company) —
+  the same "inherently bounded, not transactional" reasoning already
+  applied when this session first identified the pagination gap.
+  **A real environment constraint hit during verification, handled
+  honestly rather than assumed away**: a full authenticated browser test
+  (log in via Playwright, click through Products' Previous/Next) was
+  attempted first, but this sandbox's own outbound network policy
+  explicitly denies the app server's own connection to its Supabase
+  project (`kfxjdgijquselbfprxxv.supabase.co:443` — confirmed via the
+  proxy's own status endpoint reporting a `connect_rejected`/`403`
+  specifically for that host) — the exact same class of restriction
+  already documented blocking Phase 9's offline-first Supabase test and
+  the Android Gradle build, not a new or code-related failure. Verified
+  instead at the level that restriction doesn't block: inserted 30 real
+  products into a fresh test tenant and ran the exact SQL a page's
+  `.range(0,24)` / `.range(25,49)` calls translate to directly against
+  the live database — page 1 returned exactly 25 rows, page 2 returned
+  exactly the remaining 5 with zero overlap or gap, and `count` matched
+  30 — proving the pagination math itself is correct against the real
+  schema. `parsePage()`/`pageRange()` were also unit-exercised directly
+  (via `tsx`) against every edge case — missing, `{}`, `"0"`, `"-5"`,
+  `"abc"`, `"3.7"`, and `"999999"` — confirming every one safely resolves
+  to a valid, non-negative range rather than throwing or producing a
+  negative offset. `npx tsc --noEmit`, `npm run lint`, `npx vitest run`
+  (36 passing, unchanged — no offline-relevant behavior touched), and
+  `npm run build` all clean across all 20 edited screens; the test tenant,
+  its 30 products, and its test user were fully torn down afterward,
+  confirmed empty by a final count query. `get_advisors` (security) showed
+  only the same pre-existing, already-accepted baseline — no new findings
+  (no schema was touched by this pass, only application-layer queries).

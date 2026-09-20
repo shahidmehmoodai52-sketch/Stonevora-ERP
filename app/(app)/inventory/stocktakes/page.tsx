@@ -1,16 +1,25 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveTenant } from "@/lib/tenant/getActiveTenant";
+import { parsePage, pageRange } from "@/lib/pagination";
+import { Pagination } from "@/components/Pagination";
 
-export default async function StocktakesPage() {
+export default async function StocktakesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const tenant = await requireActiveTenant();
   const supabase = await createClient();
+  const page = parsePage(await searchParams);
+  const [from, to] = pageRange(page);
 
-  const { data: stocktakes } = await supabase
+  const { data: stocktakes, count } = await supabase
     .from("stocktakes")
-    .select("id, stocktake_number, status, created_at, warehouses(name)")
+    .select("id, stocktake_number, status, created_at, warehouses(name)", { count: "exact" })
     .eq("tenant_id", tenant.tenantId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range(from, to);
 
   return (
     <div>
@@ -53,6 +62,7 @@ export default async function StocktakesPage() {
           </tbody>
         </table>
       </div>
+      <Pagination currentPage={page} totalCount={count ?? 0} basePath="/inventory/stocktakes" />
     </div>
   );
 }

@@ -1,16 +1,25 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveTenant } from "@/lib/tenant/getActiveTenant";
+import { parsePage, pageRange } from "@/lib/pagination";
+import { Pagination } from "@/components/Pagination";
 
-export default async function PurchaseReturnsPage() {
+export default async function PurchaseReturnsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const tenant = await requireActiveTenant();
   const supabase = await createClient();
+  const page = parsePage(await searchParams);
+  const [from, to] = pageRange(page);
 
-  const { data: returns } = await supabase
+  const { data: returns, count } = await supabase
     .from("purchase_returns")
-    .select("id, return_number, return_date, status, total_amount, suppliers(name)")
+    .select("id, return_number, return_date, status, total_amount, suppliers(name)", { count: "exact" })
     .eq("tenant_id", tenant.tenantId)
-    .order("return_date", { ascending: false });
+    .order("return_date", { ascending: false })
+    .range(from, to);
 
   return (
     <div>
@@ -52,6 +61,7 @@ export default async function PurchaseReturnsPage() {
           </tbody>
         </table>
       </div>
+      <Pagination currentPage={page} totalCount={count ?? 0} basePath="/purchasing/returns" />
     </div>
   );
 }

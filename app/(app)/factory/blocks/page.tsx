@@ -1,20 +1,30 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveTenant } from "@/lib/tenant/getActiveTenant";
+import { parsePage, pageRange } from "@/lib/pagination";
+import { Pagination } from "@/components/Pagination";
 
-export default async function FactoryBlocksPage() {
+export default async function FactoryBlocksPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const tenant = await requireActiveTenant();
   const supabase = await createClient();
+  const page = parsePage(await searchParams);
+  const [from, to] = pageRange(page);
 
-  const [{ data: blocks }, { data: uoms }] = await Promise.all([
+  const [{ data: blocks, count }, { data: uoms }] = await Promise.all([
     supabase
       .from("inventory_units")
       .select(
-        "id, unit_code, status, actual_length, actual_width, actual_thickness, dimension_uom_id, volume, volume_uom_id, cost, quarry_source, quality_grade, products(sku, name)"
+        "id, unit_code, status, actual_length, actual_width, actual_thickness, dimension_uom_id, volume, volume_uom_id, cost, quarry_source, quality_grade, products(sku, name)",
+        { count: "exact" }
       )
       .eq("tenant_id", tenant.tenantId)
       .eq("unit_type", "block")
-      .order("created_at", { ascending: false }),
+      .order("created_at", { ascending: false })
+      .range(from, to),
     supabase.from("uom").select("id, code"),
   ]);
 
@@ -79,6 +89,7 @@ export default async function FactoryBlocksPage() {
           </tbody>
         </table>
       </div>
+      <Pagination currentPage={page} totalCount={count ?? 0} basePath="/factory/blocks" />
     </div>
   );
 }

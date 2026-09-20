@@ -1,16 +1,25 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveTenant } from "@/lib/tenant/getActiveTenant";
+import { parsePage, pageRange } from "@/lib/pagination";
+import { Pagination } from "@/components/Pagination";
 
-export default async function ProcessingJobsPage() {
+export default async function ProcessingJobsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const tenant = await requireActiveTenant();
   const supabase = await createClient();
+  const page = parsePage(await searchParams);
+  const [from, to] = pageRange(page);
 
-  const { data: jobs } = await supabase
+  const { data: jobs, count } = await supabase
     .from("processing_jobs")
-    .select("id, job_number, stage, status, machine, yield_percentage, actual_slab_count, actual_remnant_count, inventory_units(unit_code)")
+    .select("id, job_number, stage, status, machine, yield_percentage, actual_slab_count, actual_remnant_count, inventory_units(unit_code)", { count: "exact" })
     .eq("tenant_id", tenant.tenantId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range(from, to);
 
   return (
     <div>
@@ -60,6 +69,7 @@ export default async function ProcessingJobsPage() {
           </tbody>
         </table>
       </div>
+      <Pagination currentPage={page} totalCount={count ?? 0} basePath="/factory/jobs" />
     </div>
   );
 }

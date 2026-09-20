@@ -2,19 +2,28 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveTenant } from "@/lib/tenant/getActiveTenant";
 import { fetchPermissionSet, hasPermission } from "@/lib/auth/permissions";
+import { parsePage, pageRange } from "@/lib/pagination";
+import { Pagination } from "@/components/Pagination";
 
-export default async function ProductsPage() {
+export default async function ProductsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const tenant = await requireActiveTenant();
   const supabase = await createClient();
+  const page = parsePage(await searchParams);
+  const [from, to] = pageRange(page);
 
-  const [{ data: products }, { data: uoms }, permissionSet] = await Promise.all([
+  const [{ data: products, count }, { data: uoms }, permissionSet] = await Promise.all([
     // products_secure redacts cost_price/standard_margin_pct per-row based on the
     // caller's own view_cost/view_profit permissions — no app-layer gating needed.
     supabase
       .from("products_secure")
-      .select("id, sku, name, inventory_tracking_mode, base_uom_id, cost_price, standard_margin_pct")
+      .select("id, sku, name, inventory_tracking_mode, base_uom_id, cost_price, standard_margin_pct", { count: "exact" })
       .eq("tenant_id", tenant.tenantId)
-      .order("name"),
+      .order("name")
+      .range(from, to),
     supabase.from("uom").select("id, code"),
     fetchPermissionSet(tenant.tenantId),
   ]);
@@ -82,6 +91,7 @@ export default async function ProductsPage() {
           </tbody>
         </table>
       </div>
+      <Pagination currentPage={page} totalCount={count ?? 0} basePath="/products" />
     </div>
   );
 }

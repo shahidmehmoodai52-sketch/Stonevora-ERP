@@ -3,16 +3,25 @@ import { createClient } from "@/lib/supabase/server";
 import { requireActiveTenant } from "@/lib/tenant/getActiveTenant";
 import { createCustomerAction } from "@/actions/sales";
 import { ActionForm } from "@/components/ActionForm";
+import { parsePage, pageRange } from "@/lib/pagination";
+import { Pagination } from "@/components/Pagination";
 
-export default async function CustomersPage() {
+export default async function CustomersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const tenant = await requireActiveTenant();
   const supabase = await createClient();
-  const [{ data: customers }, { data: priceLists }] = await Promise.all([
+  const page = parsePage(await searchParams);
+  const [from, to] = pageRange(page);
+  const [{ data: customers, count }, { data: priceLists }] = await Promise.all([
     supabase
       .from("customers")
-      .select("id, code, name, customer_type, phone, email")
+      .select("id, code, name, customer_type, phone, email", { count: "exact" })
       .eq("tenant_id", tenant.tenantId)
-      .order("name"),
+      .order("name")
+      .range(from, to),
     supabase.from("price_lists").select("id, name").eq("tenant_id", tenant.tenantId).order("name"),
   ]);
 
@@ -50,7 +59,8 @@ export default async function CustomersPage() {
           </tbody>
         </table>
       </div>
-      <h2 className="mb-4 text-sm font-semibold text-zinc-900 dark:text-zinc-50">Add customer</h2>
+      <Pagination currentPage={page} totalCount={count ?? 0} basePath="/sales/customers" />
+      <h2 className="mb-4 mt-8 text-sm font-semibold text-zinc-900 dark:text-zinc-50">Add customer</h2>
       <ActionForm action={createCustomerAction} submitLabel="Add customer" className="flex flex-col gap-4 max-w-sm">
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Code</label>

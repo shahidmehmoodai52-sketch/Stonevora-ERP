@@ -1,15 +1,24 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveTenant } from "@/lib/tenant/getActiveTenant";
+import { parsePage, pageRange } from "@/lib/pagination";
+import { Pagination } from "@/components/Pagination";
 
-export default async function SalesInvoicesPage() {
+export default async function SalesInvoicesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const tenant = await requireActiveTenant();
   const supabase = await createClient();
-  const { data: invoices } = await supabase
+  const page = parsePage(await searchParams);
+  const [from, to] = pageRange(page);
+  const { data: invoices, count } = await supabase
     .from("sales_invoices")
-    .select("id, invoice_number, invoice_date, status, total_amount, amount_paid, customers(name)")
+    .select("id, invoice_number, invoice_date, status, total_amount, amount_paid, customers(name)", { count: "exact" })
     .eq("tenant_id", tenant.tenantId)
-    .order("invoice_date", { ascending: false });
+    .order("invoice_date", { ascending: false })
+    .range(from, to);
 
   return (
     <div>
@@ -49,6 +58,7 @@ export default async function SalesInvoicesPage() {
           </tbody>
         </table>
       </div>
+      <Pagination currentPage={page} totalCount={count ?? 0} basePath="/sales/invoices" />
     </div>
   );
 }

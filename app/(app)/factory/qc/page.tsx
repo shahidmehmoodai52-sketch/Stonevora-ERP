@@ -1,17 +1,26 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveTenant } from "@/lib/tenant/getActiveTenant";
+import { parsePage, pageRange } from "@/lib/pagination";
+import { Pagination } from "@/components/Pagination";
 
-export default async function QcQueuePage() {
+export default async function QcQueuePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const tenant = await requireActiveTenant();
   const supabase = await createClient();
+  const page = parsePage(await searchParams);
+  const [from, to] = pageRange(page);
 
-  const { data: units } = await supabase
+  const { data: units, count } = await supabase
     .from("inventory_units")
-    .select("id, unit_code, unit_type, actual_length, actual_width, actual_thickness, actual_area, quality_grade, products(sku, name), processing_jobs(job_number)")
+    .select("id, unit_code, unit_type, actual_length, actual_width, actual_thickness, actual_area, quality_grade, products(sku, name), processing_jobs(job_number)", { count: "exact" })
     .eq("tenant_id", tenant.tenantId)
     .eq("status", "pending_qc")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range(from, to);
 
   return (
     <div>
@@ -57,6 +66,7 @@ export default async function QcQueuePage() {
           </tbody>
         </table>
       </div>
+      <Pagination currentPage={page} totalCount={count ?? 0} basePath="/factory/qc" />
     </div>
   );
 }

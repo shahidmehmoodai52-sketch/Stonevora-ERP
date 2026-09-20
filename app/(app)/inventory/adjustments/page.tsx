@@ -1,16 +1,25 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveTenant } from "@/lib/tenant/getActiveTenant";
+import { parsePage, pageRange } from "@/lib/pagination";
+import { Pagination } from "@/components/Pagination";
 
-export default async function StockAdjustmentsPage() {
+export default async function StockAdjustmentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const tenant = await requireActiveTenant();
   const supabase = await createClient();
+  const page = parsePage(await searchParams);
+  const [from, to] = pageRange(page);
 
-  const { data: adjustments } = await supabase
+  const { data: adjustments, count } = await supabase
     .from("stock_adjustments")
-    .select("id, adjustment_number, adjustment_date, reason_code, status, warehouses(name)")
+    .select("id, adjustment_number, adjustment_date, reason_code, status, warehouses(name)", { count: "exact" })
     .eq("tenant_id", tenant.tenantId)
-    .order("adjustment_date", { ascending: false });
+    .order("adjustment_date", { ascending: false })
+    .range(from, to);
 
   return (
     <div>
@@ -57,6 +66,7 @@ export default async function StockAdjustmentsPage() {
           </tbody>
         </table>
       </div>
+      <Pagination currentPage={page} totalCount={count ?? 0} basePath="/inventory/adjustments" />
     </div>
   );
 }

@@ -3,15 +3,24 @@ import { createClient } from "@/lib/supabase/server";
 import { requireActiveTenant } from "@/lib/tenant/getActiveTenant";
 import { createSupplierAction } from "@/actions/purchasing";
 import { ActionForm } from "@/components/ActionForm";
+import { parsePage, pageRange } from "@/lib/pagination";
+import { Pagination } from "@/components/Pagination";
 
-export default async function SuppliersPage() {
+export default async function SuppliersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const tenant = await requireActiveTenant();
   const supabase = await createClient();
-  const { data: suppliers } = await supabase
+  const page = parsePage(await searchParams);
+  const [from, to] = pageRange(page);
+  const { data: suppliers, count } = await supabase
     .from("suppliers")
-    .select("id, code, name, phone, email")
+    .select("id, code, name, phone, email", { count: "exact" })
     .eq("tenant_id", tenant.tenantId)
-    .order("name");
+    .order("name")
+    .range(from, to);
 
   return (
     <div className="max-w-3xl">
@@ -47,7 +56,8 @@ export default async function SuppliersPage() {
           </tbody>
         </table>
       </div>
-      <h2 className="mb-4 text-sm font-semibold text-zinc-900 dark:text-zinc-50">Add supplier</h2>
+      <Pagination currentPage={page} totalCount={count ?? 0} basePath="/purchasing/suppliers" />
+      <h2 className="mb-4 mt-8 text-sm font-semibold text-zinc-900 dark:text-zinc-50">Add supplier</h2>
       <ActionForm action={createSupplierAction} submitLabel="Add supplier" className="flex flex-col gap-4 max-w-sm">
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Code</label>
