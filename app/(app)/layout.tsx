@@ -14,7 +14,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
           <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-y-2 px-4 py-3 sm:px-6">
             <div className="flex min-w-0 items-center gap-4 sm:gap-6">
-              <span className="shrink-0 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+              <span className="flex shrink-0 items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                <span className="flex h-6 w-6 items-center justify-center rounded bg-zinc-900 text-xs font-bold text-amber-500 dark:bg-zinc-800">
+                  S
+                </span>
                 Stonevora
               </span>
               <nav className="flex items-center gap-1 text-sm text-zinc-600 dark:text-zinc-400">

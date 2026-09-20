@@ -160,11 +160,25 @@ export function LandingPage() {
   );
 }
 
+// Reused wherever the brand mark appears (header, footer) so the same
+// monogram + accent-bar motif shown in icon.tsx/opengraph-image.tsx also
+// appears live on the page, not just in generated images.
+function BrandMark() {
+  return (
+    <span className="flex items-center gap-2 text-lg font-semibold">
+      <span className="flex h-7 w-7 items-center justify-center rounded-md bg-zinc-900 text-sm font-bold text-amber-500 dark:bg-zinc-800">
+        S
+      </span>
+      Stonevora
+    </span>
+  );
+}
+
 function Header() {
   return (
     <header className="sticky top-0 z-10 border-b border-zinc-200 bg-white/90 backdrop-blur dark:border-zinc-800 dark:bg-black/90">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-        <span className="text-lg font-semibold">Stonevora</span>
+        <BrandMark />
         <nav className="flex items-center gap-2 text-sm">
           <Link
             href="/login"
@@ -174,7 +188,7 @@ function Header() {
           </Link>
           <Link
             href="/signup"
-            className="flex min-h-11 items-center rounded-md bg-zinc-900 px-4 font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"
+            className="flex min-h-11 items-center rounded-md bg-amber-600 px-4 font-medium text-white hover:bg-amber-700 dark:bg-amber-500 dark:text-zinc-950 dark:hover:bg-amber-400"
           >
             Get started
           </Link>
@@ -188,7 +202,7 @@ function Hero() {
   return (
     <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
       <div className="max-w-3xl">
-        <p className="mb-4 text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+        <p className="mb-4 text-sm font-medium uppercase tracking-wide text-amber-600 dark:text-amber-500">
           ERP for marble, granite, natural stone &amp; tile
         </p>
         <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
@@ -202,7 +216,7 @@ function Hero() {
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <Link
             href="/signup"
-            className="flex min-h-12 items-center justify-center rounded-md bg-zinc-900 px-6 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"
+            className="flex min-h-12 items-center justify-center rounded-md bg-amber-600 px-6 text-sm font-medium text-white hover:bg-amber-700 dark:bg-amber-500 dark:text-zinc-950 dark:hover:bg-amber-400"
           >
             Get started
           </Link>
@@ -275,7 +289,7 @@ function TraceabilityWorkflow() {
           {workflowSteps.map((step, i) => (
             <li key={step} className="flex items-center gap-3">
               <span className="flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm dark:border-zinc-700 dark:bg-black">
-                <span className="text-zinc-400 dark:text-zinc-600">{i + 1}</span>
+                <span className="font-semibold text-amber-600 dark:text-amber-500">{i + 1}</span>
                 {step}
               </span>
               {i < workflowSteps.length - 1 && (
@@ -315,7 +329,7 @@ function MobileCapability() {
           <div className="mx-auto flex max-w-[220px] flex-col gap-3 rounded-2xl border border-zinc-300 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-black">
             <div className="h-2 w-16 rounded-full bg-zinc-200 dark:bg-zinc-800" />
             <div className="h-20 rounded-lg bg-zinc-100 dark:bg-zinc-900" />
-            <div className="h-8 rounded-md bg-zinc-900 dark:bg-zinc-100" />
+            <div className="h-8 rounded-md bg-amber-600 dark:bg-amber-500" />
             <div className="h-8 rounded-md border border-zinc-200 dark:border-zinc-800" />
           </div>
         </div>
@@ -387,7 +401,7 @@ function Faq() {
             <details key={item.q} className="group py-4">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left font-medium">
                 {item.q}
-                <span className="shrink-0 text-zinc-400 group-open:rotate-45">+</span>
+                <span className="shrink-0 text-amber-600 group-open:rotate-45 dark:text-amber-500">+</span>
               </summary>
               <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">{item.a}</p>
             </details>
@@ -412,7 +426,7 @@ function FinalCta() {
         <div className="mt-8 flex justify-center">
           <Link
             href="/signup"
-            className="flex min-h-12 items-center justify-center rounded-md bg-zinc-900 px-6 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900"
+            className="flex min-h-12 items-center justify-center rounded-md bg-amber-600 px-6 text-sm font-medium text-white hover:bg-amber-700 dark:bg-amber-500 dark:text-zinc-950 dark:hover:bg-amber-400"
           >
             Get started
           </Link>

@@ -19,11 +19,12 @@ export default function OpengraphImage() {
           fontFamily: "sans-serif",
         }}
       >
-        <div style={{ fontSize: 32, color: "#a1a1aa", letterSpacing: 2 }}>
+        <div style={{ display: "flex", fontSize: 32, color: "#f59e0b", letterSpacing: 2, fontWeight: 600 }}>
           ERP FOR MARBLE, GRANITE, STONE &amp; TILE
         </div>
-        <div style={{ fontSize: 96, fontWeight: 600, marginTop: 24 }}>Stonevora</div>
-        <div style={{ fontSize: 32, color: "#d4d4d8", marginTop: 24, maxWidth: 900 }}>
+        <div style={{ display: "flex", fontSize: 96, fontWeight: 700, marginTop: 24 }}>Stonevora</div>
+        <div style={{ display: "flex", width: 160, height: 10, marginTop: 20, background: "#f59e0b", borderRadius: 5 }} />
+        <div style={{ display: "flex", fontSize: 32, color: "#d4d4d8", marginTop: 32, maxWidth: 900 }}>
           Trading, factory production, fabrication, tile manufacturing,
           distribution and showrooms — on one platform.
         </div>

@@ -1758,3 +1758,69 @@ verified before the next begins.
       access (a real machine, or a CI runner with the Android SDK
       preinstalled) should run `./gradlew assembleDebug` and an emulator
       smoke test before this ships to a device.
+- **Branding — brand color + wordmark mark + landing page polish** ✅:
+  requested directly by the user ("koi brand color set kar dein... is ka
+  logo kesa hai"), with full creative discretion on the actual color/style
+  choice. Before this pass, every screen (landing page included) was pure
+  zinc/black-white monochrome, and the "logo" was a single unstyled letter
+  "S" — no distinct brand identity, and no visual hierarchy between
+  primary and secondary actions (every button on the landing page was the
+  identical `bg-zinc-900`/`bg-zinc-100` pair).
+  **Color choice, with reasoning**: `amber` (Tailwind's built-in palette,
+  `amber-600`/`amber-700` light mode, `amber-500`/`amber-400` dark mode —
+  no custom hex values, so contrast/accessibility is whatever Tailwind's
+  own tested scale already provides). Most B2B SaaS defaults to generic
+  blue; a warm amber/copper accent is both more distinctive and
+  thematically closer to the industry itself (quarried stone, polished
+  granite) while still matching the current "neutral zinc base + one
+  accent color" dark-SaaS pattern already established by this app's own
+  UI (semantic status colors — emerald/red/amber for success/error/warning
+  — were already in place from Phase 1 onward; this adds the first actual
+  *brand* accent, a different role from those semantic colors, reusing the
+  same Tailwind palette family deliberately rather than introducing a
+  fourth color system).
+  **Logo**: `app/icon.tsx`/`app/apple-icon.tsx` redesigned as a monogram
+  (amber "S" + a short amber accent bar underneath, on the existing dark
+  `#09090b` surface) rather than a full wordmark — a wordmark is illegible
+  once scaled down to a 16px favicon, so the two need different treatments;
+  `app/opengraph-image.tsx` (1200×630, large enough for a full wordmark)
+  now carries the amber eyebrow line, the "Stonevora" title, and the same
+  accent-bar motif, tying the small icon and the large social-share image
+  to one consistent mark instead of two unrelated designs.
+  **Landing page**: a reusable `BrandMark` component (amber-on-zinc "S" +
+  wordmark) replaces the old plain-text header logo; every primary call-to-
+  action (header "Get started", hero "Get started", final-CTA "Get
+  started") switched to solid amber, while secondary actions (Sign in, the
+  outline "See what it does" button) stay neutral zinc — a real visual
+  hierarchy that didn't exist before, not just a color swap. Smaller
+  accent touches: the hero eyebrow line, the traceability workflow's
+  numbered step badges, the FAQ section's expand indicator, and the phone
+  mockup's primary-button placeholder all now use the same amber. The
+  in-app header (`app/(app)/layout.tsx`) picked up the same small amber
+  monogram next to its "Stonevora" wordmark for brand consistency between
+  the marketing site and the app itself — deliberately scoped to just the
+  logo mark, not a re-skin of the app's 60+ already-built, already-verified
+  functional screens, since that was never asked for and would be a large,
+  unnecessary regression risk against working code.
+  **SEO — audited, not rebuilt**: title template, OpenGraph/Twitter
+  metadata, canonical URLs, `sitemap.ts`/`robots.ts`, the `SoftwareApplication`
+  + `FAQPage` JSON-LD block (built from the same 12-entry `faqs` array
+  rendered on the page, still no divergent copy), and the generated
+  manifest/icons were already comprehensive from Phase 9's own SEO pass;
+  re-reviewed here and found genuinely complete — no gaps worth inventing
+  work to fill, consistent with this project's own standing practice of
+  recording a real "nothing needed changing" finding rather than
+  manufacturing busywork.
+  **Live-verified**: `npm run build` generated all three `ImageResponse`
+  routes (`/icon`, `/apple-icon`, `/opengraph-image`) as static (`○`)
+  routes with no render errors; a local production server
+  (`npm run start`) was started and each route's actual PNG output was
+  fetched and visually inspected — the icon reads correctly as an amber
+  "S" + accent bar on a rounded dark square, and the OG image shows the
+  amber eyebrow/accent bar with the white "Stonevora" wordmark and
+  description exactly as designed; the landing page's rendered HTML was
+  fetched and confirmed to contain the new `amber-*` utility classes
+  throughout (compiled CSS present, no missing/typo'd class names) and a
+  correct `<title>` tag. `npx tsc --noEmit` and `npm run lint` both clean.
+  The temporary preview server was stopped and its downloaded PNGs deleted
+  afterward.
