@@ -2146,3 +2146,96 @@ verified before the next begins.
   passing, unchanged), and `npm run build` (confirmed both
   `/factory/dashboard` and `/factory/reports` present in the route list)
   all clean.
+- **Photo/image upload for blocks, slabs, and products** ✅: closes the
+  sixth real gap this session's own 36-part spec audit found — multiple
+  spec sections reference photo capture, but this codebase had never used
+  Supabase Storage anywhere.
+  **Migration** (`supabase/migrations/0058_entity_photos.sql`): a private
+  `entity-photos` storage bucket (8MB limit, JPEG/PNG/WEBP only) plus one
+  generic `entity_photos` metadata table — `entity_type` in
+  (`'product'`, `'inventory_unit'`), the same reusable-mechanism-over-
+  parallel-tables preference this codebase already follows elsewhere
+  (`product_lookup_values`, `audit_trigger_fn()`). An `inventory_unit`
+  covers both blocks and slabs/remnants (distinguished only by
+  `unit_type`), so no separate block/slab variant was needed.
+  `inventory_batches` (Tile Manufacturing) was deliberately left out — no
+  screen shows an individual batch the way a block/slab detail page
+  shows one physical unit, and the task only asked for "blocks, slabs,
+  products." Storage path convention `{tenant_id}/{entity_type}/
+  {entity_id}/{uuid}.{ext}` lets RLS derive the tenant/entity-type
+  entirely from the object's own path via `storage.foldername()` — the
+  Supabase-documented private-bucket pattern — rather than trusting any
+  client-supplied claim. Both the `entity_photos` table and
+  `storage.objects` carry matching RLS: any tenant member can view (a
+  photo is no more sensitive than the record it documents), while
+  insert/delete require the same permission each entity type's own edit
+  actions already require elsewhere (`product`.`edit`,
+  `production`.`edit`). Photos are served via short-lived signed URLs
+  generated server-side, never a public bucket URL.
+  **Application layer**: `actions/photos.ts`
+  (`uploadEntityPhotoAction`/`deleteEntityPhotoAction`) validates MIME
+  type and size server-side in addition to the bucket's own
+  `allowed_mime_types`/`file_size_limit`, confirms the target entity
+  actually exists before accepting a file, and rolls back the storage
+  upload if the metadata insert fails (no orphaned file with no
+  database row). A reusable `components/PhotoGallery.tsx` (grid + upload
+  form + remove button) is used in three places: the product detail page,
+  a **new** block detail page (`/factory/blocks/[id]` — no per-unit page
+  existed at all before this, so the blocks list was given a link to it),
+  and the existing QC slab inspection page, covering blocks, slabs, and
+  products without three separate implementations.
+  **Deliberately not wired into offline queueing**, unlike every other
+  create action in this app: `lib/offline/sync.ts`'s own existing comment
+  already documents that the offline outbox only serializes text/number/
+  select fields and a `File` would silently corrupt if queued the same
+  way — a boundary this codebase had already anticipated before this
+  feature existed, not a new gap being papered over.
+  **Live-verified** against a fresh test tenant on the real Supabase
+  project, with one methodology correction made mid-verification and
+  worth recording honestly: an initial RLS test run through
+  `execute_sql` (which connects as the `postgres` superuser, and
+  superusers bypass row-level security entirely by Postgres design) gave
+  a false pass — a row inserted into `entity_photos` with no JWT claim
+  set at all, appearing to slip past RLS. This was caught before being
+  trusted, not after — every previous migration's RLS checks this session
+  ran went through RPC calls with their own explicit `has_permission()`/
+  `raise exception` logic, which is unaffected by the calling role's RLS-
+  bypass status, so this was the first time a *raw table write* was
+  used to test RLS directly and the first time the gap surfaced. Fixed
+  by adding `set local role authenticated` alongside `set local
+  request.jwt.claims` so the session actually runs as the same
+  non-superuser role the real app connects as, then every check was
+  re-run for real: an insert with a `sub` claim for a user who isn't a
+  tenant member was rejected; an insert with `role authenticated` and no
+  claims at all was rejected; the owner's real insert succeeded; a
+  `storage.objects` insert with a bogus `entity_type` path segment was
+  rejected, as was one with a foreign tenant's UUID in the path; and a
+  second tenant's owner querying `entity_photos` for the first tenant's
+  rows correctly got zero results even though a superuser query in the
+  same session confirmed the rows genuinely existed (3, not 0) —
+  proving real cross-tenant RLS isolation, not just an empty test
+  fixture. `get_advisors` (security) showed only the same pre-existing
+  baseline — no missing-RLS or other new findings on either the new
+  table or the new storage policies.
+  **A genuine, disclosed environment boundary**: the actual browser file
+  Storage API (a real `multipart/form-data` upload through
+  `supabase-js`) could not be exercised end-to-end from this sandbox for
+  the same reason documented in every prior phase that hit it — this
+  environment's outbound network policy denies the app server's own
+  connection to its Supabase project host, and there is no Storage-
+  specific SQL equivalent the way `execute_sql`/RPC calls cover the
+  database layer. What *was* verified directly against `storage.objects`
+  and `entity_photos` (both real Postgres tables with real RLS policies)
+  is the actual security-critical logic — permission checks, path
+  parsing, tenant isolation — which is what an upload request is
+  authorized or rejected by; the bytes-over-the-wire part of
+  `supabase-js`'s `.upload()` call is standard library behavior this
+  session did not write. `npx tsc --noEmit`, `npm run lint`,
+  `npx vitest run` (37 passing, unchanged — no existing test touched
+  file-upload code), and `npm run build` (confirmed `/factory/blocks/
+  [id]` present in the route list) all clean. The test tenants, their
+  fixtures, and the test `storage.objects` row (removed via the
+  `storage.allow_delete_query` session setting `storage.protect_delete()`
+  itself names as the sanctioned way around its own "use the Storage API
+  instead" guard) were fully torn down afterward, confirmed empty by a
+  final count query across `entity_photos` and `storage.objects` both.

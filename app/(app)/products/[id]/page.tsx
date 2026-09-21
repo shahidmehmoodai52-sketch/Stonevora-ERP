@@ -4,7 +4,9 @@ import { requireActiveTenant } from "@/lib/tenant/getActiveTenant";
 import { fetchPermissionSet, hasPermission } from "@/lib/auth/permissions";
 import { updateProductAction, deleteProductAction } from "@/actions/products";
 import { generateProductBarcodeAction } from "@/actions/scanning";
+import { uploadEntityPhotoAction, deleteEntityPhotoAction } from "@/actions/photos";
 import { PostButton } from "@/components/PostButton";
+import { PhotoGallery } from "@/components/PhotoGallery";
 import { ProductForm } from "../ProductForm";
 import { DeleteProductButton } from "./DeleteProductButton";
 
@@ -35,6 +37,22 @@ export default async function ProductDetailPage({
     hasPermission(permissionSet, "product", "view_cost") ||
     hasPermission(permissionSet, "product", "view_profit");
   const canDelete = hasPermission(permissionSet, "product", "delete");
+  const canEditProduct = hasPermission(permissionSet, "product", "edit");
+
+  const { data: photoRows } = await supabase
+    .from("entity_photos")
+    .select("id, storage_path, caption")
+    .eq("entity_type", "product")
+    .eq("entity_id", id)
+    .order("created_at", { ascending: false });
+
+  const photos = await Promise.all(
+    (photoRows ?? []).map(async (p) => {
+      const { data } = await supabase.storage.from("entity-photos").createSignedUrl(p.storage_path, 3600);
+      return { id: p.id, url: data?.signedUrl ?? "", caption: p.caption };
+    })
+  );
+  const revalidatePathValue = `/products/${id}`;
 
   return (
     <div>
@@ -79,6 +97,15 @@ export default async function ProductDetailPage({
             product.standard_margin_pct !== null ? String(product.standard_margin_pct) : "",
         }}
       />
+
+      <div className="mt-8">
+        <PhotoGallery
+          photos={photos}
+          uploadAction={uploadEntityPhotoAction.bind(null, "product", id, revalidatePathValue)}
+          deleteAction={deleteEntityPhotoAction.bind(null, revalidatePathValue)}
+          canEdit={canEditProduct}
+        />
+      </div>
     </div>
   );
 }

@@ -56,7 +56,11 @@ export default async function FactoryBlocksPage({
           <tbody>
             {(blocks ?? []).map((b) => (
               <tr key={b.id} className="border-b border-zinc-100 dark:border-zinc-900">
-                <td className="py-2 pr-2 font-medium text-zinc-900 dark:text-zinc-50">{b.unit_code}</td>
+                <td className="py-2 pr-2 font-medium text-zinc-900 dark:text-zinc-50">
+                  <Link href={`/factory/blocks/${b.id}`} className="underline hover:no-underline">
+                    {b.unit_code}
+                  </Link>
+                </td>
                 <td className="py-2 pr-2">{b.products?.sku} — {b.products?.name}</td>
                 <td className="py-2 pr-2">
                   {b.actual_length} × {b.actual_width} × {b.actual_thickness}{" "}
