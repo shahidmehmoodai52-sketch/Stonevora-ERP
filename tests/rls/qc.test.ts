@@ -10,6 +10,7 @@ describe.skipIf(!hasServiceRoleKey)("Factory Milestone 5: QC", () => {
   let qcManagerUser: { userId: string; client: ReturnType<typeof adminClient> };
   let branchBQcUser: { userId: string; client: ReturnType<typeof adminClient> };
   let tenantId: string;
+  let cuttingStageId: string;
   let branchAId: string;
   let branchBId: string;
   let warehouseAId: string;
@@ -32,7 +33,7 @@ describe.skipIf(!hasServiceRoleKey)("Factory Milestone 5: QC", () => {
     const blockId = await makeBlock(`BLK-${Date.now()}-${jobNumberSuffix}`);
     const { data: job } = await owner.client
       .from("processing_jobs")
-      .insert({ tenant_id: tenantId, job_number: `JOB-${Date.now()}-${jobNumberSuffix}`, input_unit_id: blockId, branch_id: branchAId, warehouse_id: warehouseAId, stage: "cutting" })
+      .insert({ tenant_id: tenantId, job_number: `JOB-${Date.now()}-${jobNumberSuffix}`, input_unit_id: blockId, branch_id: branchAId, warehouse_id: warehouseAId, stage_id: cuttingStageId })
       .select("id").single();
     await owner.client.rpc("start_processing_job", { p_processing_job_id: job!.id });
     const { data: ids } = await owner.client.rpc("complete_processing_job", {
@@ -54,6 +55,10 @@ describe.skipIf(!hasServiceRoleKey)("Factory Milestone 5: QC", () => {
       p_tenant_slug: `qc-test-${suffix}`,
     });
     tenantId = tId!;
+
+    const { data: cuttingStage } = await adminClient()
+      .from("production_stages").select("id").eq("tenant_id", tenantId).eq("code", "cutting").single();
+    cuttingStageId = cuttingStage!.id;
 
     const admin = adminClient();
     const { data: capability } = await admin.from("business_capabilities").select("id").eq("code", "block_slab_factory").single();
@@ -108,7 +113,7 @@ describe.skipIf(!hasServiceRoleKey)("Factory Milestone 5: QC", () => {
     const blockId = await makeBlock(`BLK-${Date.now()}-DEFAULT`);
     const { data: job } = await owner.client
       .from("processing_jobs")
-      .insert({ tenant_id: tenantId, job_number: `JOB-${Date.now()}-DEFAULT`, input_unit_id: blockId, branch_id: branchAId, warehouse_id: warehouseAId, stage: "cutting" })
+      .insert({ tenant_id: tenantId, job_number: `JOB-${Date.now()}-DEFAULT`, input_unit_id: blockId, branch_id: branchAId, warehouse_id: warehouseAId, stage_id: cuttingStageId })
       .select("id").single();
     await owner.client.rpc("start_processing_job", { p_processing_job_id: job!.id });
     const { data: ids } = await owner.client.rpc("complete_processing_job", {

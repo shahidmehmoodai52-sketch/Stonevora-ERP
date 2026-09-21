@@ -14,7 +14,7 @@ export default async function ProcessingJobDetailPage({ params }: { params: Prom
   const [{ data: job }, { data: dimensionUoms }, { data: areaUoms }] = await Promise.all([
     supabase
       .from("processing_jobs")
-      .select("*, inventory_units(unit_code, volume, volume_uom_id, cost, products(sku, name))")
+      .select("*, inventory_units(unit_code, volume, volume_uom_id, cost, products(sku, name)), production_stages(name)")
       .eq("id", id)
       .single(),
     supabase.from("uom").select("id, code").in("code", ["CM", "INCH", "MM"]),
@@ -34,7 +34,7 @@ export default async function ProcessingJobDetailPage({ params }: { params: Prom
       <h1 className="mb-1 text-xl font-semibold text-zinc-900 dark:text-zinc-50">{job.job_number}</h1>
       <p className="mb-6 text-sm text-zinc-600 dark:text-zinc-400">
         Block {job.inventory_units?.unit_code} ({job.inventory_units?.products?.sku} — {job.inventory_units?.products?.name}) ·{" "}
-        {job.stage} · <span className="font-medium">{job.status}</span>
+        {job.production_stages?.name} · <span className="font-medium">{job.status}</span>
       </p>
 
       <dl className="mb-8 grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-3">

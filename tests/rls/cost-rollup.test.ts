@@ -8,6 +8,7 @@ describe.skipIf(!hasServiceRoleKey)("Factory Milestone 6: Cost Roll-up", () => {
   let owner: { userId: string; client: ReturnType<typeof adminClient> };
   let branchBUser: { userId: string; client: ReturnType<typeof adminClient> };
   let tenantId: string;
+  let cuttingStageId: string;
   let branchAId: string;
   let branchBId: string;
   let warehouseAId: string;
@@ -29,7 +30,7 @@ describe.skipIf(!hasServiceRoleKey)("Factory Milestone 6: Cost Roll-up", () => {
   async function makeCompletedJob(inputUnitId: string, jobNumber: string, slabs: Record<string, unknown>[]) {
     const { data: job } = await owner.client
       .from("processing_jobs")
-      .insert({ tenant_id: tenantId, job_number: jobNumber, input_unit_id: inputUnitId, branch_id: branchAId, warehouse_id: warehouseAId, stage: "cutting" })
+      .insert({ tenant_id: tenantId, job_number: jobNumber, input_unit_id: inputUnitId, branch_id: branchAId, warehouse_id: warehouseAId, stage_id: cuttingStageId })
       .select("id").single();
     await owner.client.rpc("start_processing_job", { p_processing_job_id: job!.id });
     const { data: ids } = await owner.client.rpc("complete_processing_job", { p_processing_job_id: job!.id, p_slabs: slabs as never });
@@ -46,6 +47,10 @@ describe.skipIf(!hasServiceRoleKey)("Factory Milestone 6: Cost Roll-up", () => {
       p_tenant_slug: `cost-rollup-test-${suffix}`,
     });
     tenantId = tId!;
+
+    const { data: cuttingStage } = await adminClient()
+      .from("production_stages").select("id").eq("tenant_id", tenantId).eq("code", "cutting").single();
+    cuttingStageId = cuttingStage!.id;
 
     const admin = adminClient();
     const { data: capability } = await admin.from("business_capabilities").select("id").eq("code", "block_slab_factory").single();
@@ -142,7 +147,7 @@ describe.skipIf(!hasServiceRoleKey)("Factory Milestone 6: Cost Roll-up", () => {
     const blockId = await makeBlock(`BLK-${Date.now()}-DRAFT`, 10000);
     const { data: job } = await owner.client
       .from("processing_jobs")
-      .insert({ tenant_id: tenantId, job_number: `JOB-${Date.now()}-DRAFT`, input_unit_id: blockId, branch_id: branchAId, warehouse_id: warehouseAId, stage: "cutting" })
+      .insert({ tenant_id: tenantId, job_number: `JOB-${Date.now()}-DRAFT`, input_unit_id: blockId, branch_id: branchAId, warehouse_id: warehouseAId, stage_id: cuttingStageId })
       .select("id").single();
 
     const { error } = await owner.client.rpc("record_processing_costs", { p_processing_job_id: job!.id, p_processing_cost: 100, p_overhead_cost: 0 });

@@ -14,6 +14,7 @@ describe.skipIf(!hasServiceRoleKey)("Factory Milestone 2: Processing/Cutting", (
   let owner: { userId: string; client: ReturnType<typeof adminClient> };
   let branchBUser: { userId: string; client: ReturnType<typeof adminClient> };
   let tenantId: string;
+  let cuttingStageId: string;
   let branchAId: string;
   let branchBId: string;
   let warehouseAId: string;
@@ -36,7 +37,7 @@ describe.skipIf(!hasServiceRoleKey)("Factory Milestone 2: Processing/Cutting", (
   async function makeDraftJob(inputUnitId: string, branchId: string, warehouseId: string, jobNumber: string) {
     const { data: job, error } = await owner.client
       .from("processing_jobs")
-      .insert({ tenant_id: tenantId, job_number: jobNumber, input_unit_id: inputUnitId, branch_id: branchId, warehouse_id: warehouseId, stage: "cutting" })
+      .insert({ tenant_id: tenantId, job_number: jobNumber, input_unit_id: inputUnitId, branch_id: branchId, warehouse_id: warehouseId, stage_id: cuttingStageId })
       .select("id").single();
     return { id: job?.id as string | undefined, error };
   }
@@ -51,6 +52,10 @@ describe.skipIf(!hasServiceRoleKey)("Factory Milestone 2: Processing/Cutting", (
       p_tenant_slug: `processing-job-test-${suffix}`,
     });
     tenantId = tId!;
+
+    const { data: cuttingStage } = await adminClient()
+      .from("production_stages").select("id").eq("tenant_id", tenantId).eq("code", "cutting").single();
+    cuttingStageId = cuttingStage!.id;
 
     const admin = adminClient();
     const { data: capability } = await admin.from("business_capabilities").select("id").eq("code", "block_slab_factory").single();

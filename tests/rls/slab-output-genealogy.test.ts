@@ -8,6 +8,7 @@ describe.skipIf(!hasServiceRoleKey)("Factory Milestone 3: Slab Output + Genealog
   let owner: { userId: string; client: ReturnType<typeof adminClient> };
   let branchBUser: { userId: string; client: ReturnType<typeof adminClient> };
   let tenantId: string;
+  let cuttingStageId: string;
   let branchAId: string;
   let branchBId: string;
   let warehouseAId: string;
@@ -34,7 +35,7 @@ describe.skipIf(!hasServiceRoleKey)("Factory Milestone 3: Slab Output + Genealog
   async function makeStartedJob(inputUnitId: string, jobNumber: string) {
     const { data: job } = await owner.client
       .from("processing_jobs")
-      .insert({ tenant_id: tenantId, job_number: jobNumber, input_unit_id: inputUnitId, branch_id: branchAId, warehouse_id: warehouseAId, stage: "cutting" })
+      .insert({ tenant_id: tenantId, job_number: jobNumber, input_unit_id: inputUnitId, branch_id: branchAId, warehouse_id: warehouseAId, stage_id: cuttingStageId })
       .select("id").single();
     const { error } = await owner.client.rpc("start_processing_job", { p_processing_job_id: job!.id });
     expect(error).toBeNull();
@@ -51,6 +52,10 @@ describe.skipIf(!hasServiceRoleKey)("Factory Milestone 3: Slab Output + Genealog
       p_tenant_slug: `slab-output-test-${suffix}`,
     });
     tenantId = tId!;
+
+    const { data: cuttingStage } = await adminClient()
+      .from("production_stages").select("id").eq("tenant_id", tenantId).eq("code", "cutting").single();
+    cuttingStageId = cuttingStage!.id;
 
     const admin = adminClient();
     const { data: capability } = await admin.from("business_capabilities").select("id").eq("code", "block_slab_factory").single();

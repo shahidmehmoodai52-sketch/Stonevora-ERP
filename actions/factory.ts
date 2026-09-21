@@ -16,14 +16,14 @@ export async function createProcessingJobAction(formData: FormData): Promise<Act
   const inputUnitId = String(formData.get("inputUnitId") ?? "");
   const branchId = String(formData.get("branchId") ?? "");
   const warehouseId = String(formData.get("warehouseId") ?? "");
-  const stage = String(formData.get("stage") ?? "cutting");
+  const stageId = String(formData.get("stageId") ?? "");
   const machine = String(formData.get("machine") ?? "").trim();
   const operatorId = String(formData.get("operatorId") ?? "") || null;
   const expectedSlabCount = formData.get("expectedSlabCount") ? Number(formData.get("expectedSlabCount")) : null;
   const notes = String(formData.get("notes") ?? "").trim();
 
-  if (!jobNumber || !inputUnitId || !branchId || !warehouseId) {
-    return { error: "Job number, input block, branch and warehouse are required" };
+  if (!jobNumber || !inputUnitId || !branchId || !warehouseId || !stageId) {
+    return { error: "Job number, input block, branch, warehouse and stage are required" };
   }
 
   const supabase = await createClient();
@@ -35,7 +35,7 @@ export async function createProcessingJobAction(formData: FormData): Promise<Act
       input_unit_id: inputUnitId,
       branch_id: branchId,
       warehouse_id: warehouseId,
-      stage: stage as "cutting" | "squaring" | "polishing" | "other",
+      stage_id: stageId,
       machine: machine || null,
       operator_id: operatorId,
       expected_slab_count: expectedSlabCount,

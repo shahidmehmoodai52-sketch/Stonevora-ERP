@@ -11,21 +11,28 @@ export default async function NewProcessingJobPage({
   const tenant = await requireActiveTenant();
   const supabase = await createClient();
 
-  const [{ data: blocks }, { data: branches }, { data: warehouses }, { data: members }] = await Promise.all([
-    supabase
-      .from("inventory_units")
-      .select("id, unit_code, products(sku, name)")
-      .eq("tenant_id", tenant.tenantId)
-      .eq("unit_type", "block")
-      .eq("status", "in_stock")
-      .order("unit_code"),
-    supabase.from("branches").select("id, name").eq("tenant_id", tenant.tenantId).order("name"),
-    supabase.from("warehouses").select("id, name").eq("tenant_id", tenant.tenantId).order("name"),
-    supabase
-      .from("user_tenants")
-      .select("user_id, profiles!user_tenants_user_id_fkey(full_name, email)")
-      .eq("tenant_id", tenant.tenantId),
-  ]);
+  const [{ data: blocks }, { data: branches }, { data: warehouses }, { data: members }, { data: stages }] =
+    await Promise.all([
+      supabase
+        .from("inventory_units")
+        .select("id, unit_code, products(sku, name)")
+        .eq("tenant_id", tenant.tenantId)
+        .eq("unit_type", "block")
+        .eq("status", "in_stock")
+        .order("unit_code"),
+      supabase.from("branches").select("id, name").eq("tenant_id", tenant.tenantId).order("name"),
+      supabase.from("warehouses").select("id, name").eq("tenant_id", tenant.tenantId).order("name"),
+      supabase
+        .from("user_tenants")
+        .select("user_id, profiles!user_tenants_user_id_fkey(full_name, email)")
+        .eq("tenant_id", tenant.tenantId),
+      supabase
+        .from("production_stages")
+        .select("id, name")
+        .eq("tenant_id", tenant.tenantId)
+        .eq("is_active", true)
+        .order("sort_order"),
+    ]);
 
   return (
     <div className="max-w-xl">
@@ -42,6 +49,7 @@ export default async function NewProcessingJobPage({
           id: m.user_id,
           label: m.profiles?.full_name || m.profiles?.email || m.user_id,
         }))}
+        stages={stages ?? []}
       />
     </div>
   );

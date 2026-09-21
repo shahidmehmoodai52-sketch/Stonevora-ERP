@@ -1763,7 +1763,7 @@ export type Database = {
           operator_id: string | null
           overhead_cost: number | null
           processing_cost: number | null
-          stage: Database["public"]["Enums"]["processing_stage"]
+          stage_id: string
           started_at: string | null
           status: Database["public"]["Enums"]["processing_job_status"]
           tenant_id: string
@@ -1792,7 +1792,7 @@ export type Database = {
           operator_id?: string | null
           overhead_cost?: number | null
           processing_cost?: number | null
-          stage?: Database["public"]["Enums"]["processing_stage"]
+          stage_id: string
           started_at?: string | null
           status?: Database["public"]["Enums"]["processing_job_status"]
           tenant_id: string
@@ -1821,7 +1821,7 @@ export type Database = {
           operator_id?: string | null
           overhead_cost?: number | null
           processing_cost?: number | null
-          stage?: Database["public"]["Enums"]["processing_stage"]
+          stage_id?: string
           started_at?: string | null
           status?: Database["public"]["Enums"]["processing_job_status"]
           tenant_id?: string
@@ -1859,6 +1859,13 @@ export type Database = {
             columns: ["operator_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "processing_jobs_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "production_stages"
             referencedColumns: ["id"]
           },
           {
@@ -2297,6 +2304,65 @@ export type Database = {
             columns: ["warehouse_id"]
             isOneToOne: false
             referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_stage_templates: {
+        Row: {
+          code: string
+          id: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          code: string
+          id?: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          code?: string
+          id?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      production_stages: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+          tenant_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          tenant_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_stages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -6223,7 +6289,6 @@ export type Database = {
       inventory_unit_type: "block" | "slab" | "remnant"
       landed_cost_basis: "value" | "quantity"
       processing_job_status: "draft" | "in_progress" | "completed" | "cancelled"
-      processing_stage: "cutting" | "squaring" | "polishing" | "other"
       production_batch_status:
         | "draft"
         | "in_progress"
@@ -6446,7 +6511,6 @@ export const Constants = {
       inventory_unit_type: ["block", "slab", "remnant"],
       landed_cost_basis: ["value", "quantity"],
       processing_job_status: ["draft", "in_progress", "completed", "cancelled"],
-      processing_stage: ["cutting", "squaring", "polishing", "other"],
       production_batch_status: [
         "draft",
         "in_progress",

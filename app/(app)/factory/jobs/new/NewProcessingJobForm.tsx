@@ -12,12 +12,14 @@ export function NewProcessingJobForm({
   branches,
   warehouses,
   operators,
+  stages,
 }: {
   defaultBlockId: string;
   blocks: Option[];
   branches: NamedOption[];
   warehouses: NamedOption[];
   operators: Option[];
+  stages: NamedOption[];
 }) {
   return (
     <ActionForm action={createProcessingJobAction} submitLabel="Create job" offlineActionKey="createProcessingJob">
@@ -54,11 +56,11 @@ export function NewProcessingJobForm({
       </label>
       <label className="flex flex-col gap-1 text-sm">
         Stage
-        <select name="stage" defaultValue="cutting" className="input">
-          <option value="cutting">Cutting</option>
-          <option value="squaring">Squaring</option>
-          <option value="polishing">Polishing</option>
-          <option value="other">Other</option>
+        <select name="stageId" required className="input">
+          <option value="">—</option>
+          {stages.map((s) => (
+            <option key={s.id} value={s.id}>{s.name}</option>
+          ))}
         </select>
       </label>
       <label className="flex flex-col gap-1 text-sm">

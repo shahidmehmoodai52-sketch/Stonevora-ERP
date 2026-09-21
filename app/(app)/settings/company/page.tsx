@@ -26,6 +26,7 @@ export default async function CompanySettingsPage() {
         <Link href="/settings/roles" className="text-zinc-600 hover:underline dark:text-zinc-400">Roles</Link>
         <Link href="/settings/users" className="text-zinc-600 hover:underline dark:text-zinc-400">Users</Link>
         <Link href="/settings/capabilities" className="text-zinc-600 hover:underline dark:text-zinc-400">Business capabilities</Link>
+        <Link href="/settings/production-stages" className="text-zinc-600 hover:underline dark:text-zinc-400">Production stages</Link>
       </nav>
       <CompanySettingsForm
         name={tenantRow?.name ?? ""}

@@ -2239,3 +2239,93 @@ verified before the next begins.
   itself names as the sanctioned way around its own "use the Storage API
   instead" guard) were fully torn down afterward, confirmed empty by a
   final count query across `entity_photos` and `storage.objects` both.
+- **Configurable production workflow stages** ✅: closes the seventh and
+  last real gap this session's own 36-part spec audit found — the one
+  flagged from the start as the most architecturally risky of the six,
+  deliberately ordered last and scoped narrowly on purpose.
+  **Scope decision, stated plainly**: `processing_jobs.stage` had always
+  been a hardcoded 4-value enum (`'cutting'`/`'squaring'`/`'polishing'`/
+  `'other'`), so every tenant was stuck with one factory's idea of what
+  stages exist, when a real stone factory's actual stage list varies
+  (edge profiling, resin treatment, sandblasting, flaming...). This
+  closes that by making the *set of stages* tenant-configurable — the
+  same `role_templates` → `roles` / `account_templates` →
+  `chart_of_accounts` template-then-per-tenant-copy pattern already used
+  twice in this codebase. It deliberately does **not** build automatic
+  multi-stage job chaining (a job auto-advancing through an ordered
+  pipeline, spawning the next stage's job on completion, enforcing
+  "stage N+1 only after stage N"): a `grep` across every migration
+  confirmed `stage` has never driven any business logic in this
+  codebase — purely descriptive/reportable — so nothing about closing
+  "the stage list is hardcoded" requires inventing that larger machinery.
+  A tenant can already run a block through several jobs job-to-job to
+  model a pipeline manually (one job's output slab becomes the next
+  job's `input_unit_id`); making the descriptive stage of any one job
+  configurable is the actual, bounded gap, and is exactly what was built.
+  **Migration** (`supabase/migrations/0059_production_stages.sql`): a
+  global `production_stage_templates` catalog seeded with the exact same
+  4 default stages at the same relative order the old enum had (so no
+  tenant's default experience changes on its own), copied into a new
+  tenant-scoped `production_stages` table (code/name/sort_order/
+  is_active) at tenant creation, mirroring `create_tenant_for_user`'s
+  existing chart-of-accounts seeding exactly. No `is_system` protection
+  like `chart_of_accounts`' seeded rows: nothing in this codebase's
+  business logic is keyed to a specific stage code (unlike account codes
+  `'1000'`/`'4000'` that auto-posting hardcodes), so a tenant is free to
+  rename or delete even a seeded default — `processing_jobs.stage_id`'s
+  own foreign key (default RESTRICT) already stops deleting a stage any
+  existing job still references, without needing a bespoke trigger.
+  `processing_jobs.stage` (enum) was dropped outright and replaced with
+  `stage_id` (FK, not null) — a clean cutover, this session's now
+  repeatedly-verified precedent for this pre-launch schema with no real
+  tenant data, confirmed once more here via a live row-count check before
+  dropping.
+  **Application layer**: `createProcessingJobAction`/
+  `NewProcessingJobForm.tsx` now read the tenant's own active
+  `production_stages` (ordered by `sort_order`) instead of 4 hardcoded
+  `<option>`s; the jobs list and detail pages join
+  `production_stages(name)` in place of the raw enum column; a new
+  `/settings/production-stages` screen (add stage, toggle active,
+  reusing the exact `CapabilityToggleList`/`NewBranchForm` shapes already
+  established for this class of settings screen) lets a tenant manage
+  their own stage list, gated on the existing `company_settings`
+  resource (the same one branches/warehouses/capabilities already use).
+  **Ripple effect handled**: 7 pre-existing RLS integration test files
+  inserted `processing_jobs` rows with the literal `stage: "cutting"`;
+  each now looks up its tenant's real `cutting` stage id once in
+  `beforeAll` (mirroring how they already look up UOM ids) and passes
+  `stage_id` instead — a mechanical, no-behavior-change fix confirmed by
+  `npx tsc --noEmit` going from 10 errors across 8 files to zero.
+  **Live-verified** against a fresh test tenant on the real Supabase
+  project: the 4 default stages were confirmed seeded correctly at
+  tenant creation; a custom `'Edge Profiling'` stage was added by the
+  owner and correctly rejected when attempted by a non-member (RLS);
+  deactivating a stage succeeded; a real processing job was created
+  against the custom stage end-to-end (branch/warehouse/product/block
+  fixtures → job insert) and the `production_stages` join rendered its
+  name (`"Edge Profiling"`) exactly as the app's own list/detail pages
+  would show it; deleting a stage still referenced by that job was
+  correctly rejected by the foreign key (`processing_jobs_stage_id_fkey`
+  violates ... "Key is still referenced"), proving the "can't delete an
+  in-use stage" protection holds without any bespoke trigger. The test
+  tenant, its users, and all fixtures were fully torn down afterward
+  (cascade-verified: `production_stages` row count for the deleted
+  tenant back to 0). `get_advisors` (security) showed only the same
+  pre-existing baseline — no new findings, and no missing-RLS warning on
+  either new table. `npx tsc --noEmit`, `npm run lint`, `npx vitest run`
+  (37 passing, unchanged — the 7 fixed test files are all
+  service-role-gated and skip locally, same as every other live-DB test
+  in this suite), and `npm run build` (confirmed
+  `/settings/production-stages` present in the route list) all clean.
+
+This closes all seven gaps identified by this session's own honest
+36-part original-spec audit (server-side pagination, QC outcomes
+expansion, Trial Balance, dispatch/logistics fields, factory dashboard +
+production reports, photo/image upload, and configurable production
+stages) — the last of which was deliberately the most architecturally
+risky and was scoped narrowly and disclosed as such rather than
+over-built. Every item above was migrated, live-verified against the
+real Supabase project (including negative/permission/security cases,
+not just the happy path), documented here, and shipped through the same
+typecheck → lint → test → build → commit → push pipeline as every
+earlier phase in this project.

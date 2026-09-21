@@ -113,6 +113,43 @@ export async function createWarehouseAction(formData: FormData): Promise<ActionR
   return { success: true };
 }
 
+export async function createProductionStageAction(formData: FormData): Promise<ActionResult> {
+  const tenant = await requireActiveTenant();
+  await requirePermission(tenant.tenantId, "company_settings", "create");
+
+  const code = String(formData.get("code") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim();
+  const sortOrder = Number(formData.get("sortOrder") ?? 0);
+  if (!code || !name) return { error: "Code and name are required" };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("production_stages")
+    .insert({ tenant_id: tenant.tenantId, code, name, sort_order: sortOrder });
+  if (error) return { error: error.message };
+
+  revalidatePath("/settings/production-stages");
+  return { success: true };
+}
+
+export async function setProductionStageActiveAction(
+  stageId: string,
+  active: boolean
+): Promise<ActionResult> {
+  const tenant = await requireActiveTenant();
+  await requirePermission(tenant.tenantId, "company_settings", "edit");
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("production_stages")
+    .update({ is_active: active })
+    .eq("id", stageId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/settings/production-stages");
+  return { success: true };
+}
+
 export async function toggleRolePermissionAction(
   roleId: string,
   permissionId: string,

@@ -16,7 +16,7 @@ export default async function ProcessingJobsPage({
 
   const { data: jobs, count } = await supabase
     .from("processing_jobs")
-    .select("id, job_number, stage, status, machine, yield_percentage, actual_slab_count, actual_remnant_count, inventory_units(unit_code)", { count: "exact" })
+    .select("id, job_number, status, machine, yield_percentage, actual_slab_count, actual_remnant_count, inventory_units(unit_code), production_stages(name)", { count: "exact" })
     .eq("tenant_id", tenant.tenantId)
     .order("created_at", { ascending: false })
     .range(from, to);
@@ -52,7 +52,7 @@ export default async function ProcessingJobsPage({
                   </Link>
                 </td>
                 <td className="py-2 pr-2">{j.inventory_units?.unit_code}</td>
-                <td className="py-2 pr-2">{j.stage}</td>
+                <td className="py-2 pr-2">{j.production_stages?.name}</td>
                 <td className="py-2 pr-2">{j.machine ?? "—"}</td>
                 <td className="py-2 pr-2">
                   {j.actual_slab_count != null ? `${j.actual_slab_count} slabs, ${j.actual_remnant_count ?? 0} remnants` : "—"}

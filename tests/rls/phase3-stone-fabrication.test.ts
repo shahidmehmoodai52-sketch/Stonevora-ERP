@@ -10,6 +10,7 @@ describe.skipIf(!hasServiceRoleKey)("Phase 3: Stone Fabrication/Projects", () =>
   let factoryManager: { userId: string; client: ReturnType<typeof adminClient> };
   let salesperson: { userId: string; client: ReturnType<typeof adminClient> };
   let tenantId: string;
+  let cuttingStageId: string;
   let branchAId: string;
   let branchBId: string;
   let warehouseAId: string;
@@ -29,7 +30,7 @@ describe.skipIf(!hasServiceRoleKey)("Phase 3: Stone Fabrication/Projects", () =>
 
     const { data: job } = await owner.client
       .from("processing_jobs")
-      .insert({ tenant_id: tenantId, job_number: `JOB-${suffix}`, input_unit_id: block!.id, branch_id: branchAId, warehouse_id: warehouseAId, stage: "cutting" })
+      .insert({ tenant_id: tenantId, job_number: `JOB-${suffix}`, input_unit_id: block!.id, branch_id: branchAId, warehouse_id: warehouseAId, stage_id: cuttingStageId })
       .select("id").single();
     await owner.client.rpc("start_processing_job", { p_processing_job_id: job!.id });
     const { data: ids } = await owner.client.rpc("complete_processing_job", {
@@ -64,6 +65,10 @@ describe.skipIf(!hasServiceRoleKey)("Phase 3: Stone Fabrication/Projects", () =>
       p_tenant_slug: `phase3-test-${suffix}`,
     });
     tenantId = tId!;
+
+    const { data: cuttingStage } = await adminClient()
+      .from("production_stages").select("id").eq("tenant_id", tenantId).eq("code", "cutting").single();
+    cuttingStageId = cuttingStage!.id;
 
     const admin = adminClient();
     const { data: capabilities } = await admin.from("business_capabilities").select("id, code").in("code", ["stone_fabrication", "block_slab_factory"]);

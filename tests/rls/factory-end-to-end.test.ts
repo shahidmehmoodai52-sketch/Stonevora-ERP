@@ -17,6 +17,7 @@ import { adminClient, createSignedInTestUser, deleteTestUser, hasServiceRoleKey 
 describe.skipIf(!hasServiceRoleKey)("Factory Milestone 7: End-to-End Verification", () => {
   let owner: { userId: string; client: ReturnType<typeof adminClient> };
   let tenantId: string;
+  let cuttingStageId: string;
   let branchId: string;
   let warehouseId: string;
   let supplierId: string;
@@ -36,6 +37,10 @@ describe.skipIf(!hasServiceRoleKey)("Factory Milestone 7: End-to-End Verificatio
       p_tenant_slug: `e2e-factory-test-${suffix}`,
     });
     tenantId = tId!;
+
+    const { data: cuttingStage } = await adminClient()
+      .from("production_stages").select("id").eq("tenant_id", tenantId).eq("code", "cutting").single();
+    cuttingStageId = cuttingStage!.id;
 
     const admin = adminClient();
     const { data: capability } = await admin.from("business_capabilities").select("id").eq("code", "block_slab_factory").single();
@@ -103,7 +108,7 @@ describe.skipIf(!hasServiceRoleKey)("Factory Milestone 7: End-to-End Verificatio
     // --- Milestone 2: processing job ---
     const { data: job } = await owner.client
       .from("processing_jobs")
-      .insert({ tenant_id: tenantId, job_number: "JOB-E2E-1", input_unit_id: block!.id, branch_id: branchId, warehouse_id: warehouseId, stage: "cutting", machine: "Gangsaw #2" })
+      .insert({ tenant_id: tenantId, job_number: "JOB-E2E-1", input_unit_id: block!.id, branch_id: branchId, warehouse_id: warehouseId, stage_id: cuttingStageId, machine: "Gangsaw #2" })
       .select("id").single();
     const { error: startError } = await owner.client.rpc("start_processing_job", { p_processing_job_id: job!.id });
     expect(startError).toBeNull();
@@ -191,7 +196,7 @@ describe.skipIf(!hasServiceRoleKey)("Factory Milestone 7: End-to-End Verificatio
       .select("id").single();
     const { data: job } = await owner.client
       .from("processing_jobs")
-      .insert({ tenant_id: tenantId, job_number: `JOB-E2E-CAP-${Date.now()}`, input_unit_id: block!.id, branch_id: branchId, warehouse_id: warehouseId, stage: "cutting" })
+      .insert({ tenant_id: tenantId, job_number: `JOB-E2E-CAP-${Date.now()}`, input_unit_id: block!.id, branch_id: branchId, warehouse_id: warehouseId, stage_id: cuttingStageId })
       .select("id").single();
 
     async function withCapabilityDisabled<T>(fn: () => PromiseLike<T>): Promise<T> {
