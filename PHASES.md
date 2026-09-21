@@ -1955,3 +1955,58 @@ verified before the next begins.
   wording were updated to match. `npx tsc --noEmit`, `npm run lint`,
   `npx vitest run` (36 passing, unchanged locally), and `npm run build`
   all clean.
+- **Trial Balance report** ✅: closes the third real gap this session's own
+  36-part spec audit found in accounting depth Part 17 — the P&L and
+  Balance Sheet built in Phase 6 never included the trial balance itself,
+  the point-in-time debit/credit listing across every account used to
+  prove the ledger balances before those two derived reports are trusted.
+  **Migration** (`supabase/migrations/0055_trial_balance.sql`): a new
+  `get_trial_balance(p_tenant_id, p_branch_id, p_as_of_date)` RPC, same
+  shape as `get_profit_and_loss`/`get_balance_sheet` (single-branch,
+  gated on `accounting.view_financial`, cumulative from inception through
+  the as-of date). Unlike those two, which apply a fixed
+  debit-or-credit-is-positive formula per `account_type`, this reports
+  each account's *actual* net posting direction regardless of type — a
+  revenue account with a net debit balance (e.g. from a large correcting
+  entry) shows in the debit column, not forced negative into credit. The
+  debit/credit split is `greatest(net, 0)` / `greatest(-net, 0)` per
+  account; because every journal entry the app ever posts is itself
+  balanced (`post_journal_entry` rejects an unbalanced one, and every
+  auto-posting site inserts balanced pairs), the sum of debit-minus-credit
+  across *all* accounts is always exactly zero, which mathematically
+  guarantees the report's debit-column total equals its credit-column
+  total — the defining property of a correct trial balance — with no
+  separate balancing logic required. Every account in the tenant's chart
+  is returned, zero balances included, matching `get_balance_sheet`'s
+  existing "list the whole chart" convention.
+  **UI**: `/accounting/reports/trial-balance` (branch + as-of-date filter
+  form, a Debit/Credit two-column table, a Total row, and a "Balanced" /
+  "Out of balance" indicator identical in style to the existing Balance
+  Sheet page), linked from the Accounting section's nav alongside P&L and
+  Balance Sheet.
+  **Live-verified** against a fresh test tenant on the real Supabase
+  project: five journal entries were posted through `post_journal_entry`
+  covering an owner cash investment, a credit sale, COGS, a cash expense,
+  and — specifically to exercise the non-obvious case — a large revenue
+  correction sized to flip Sales Revenue from its natural credit balance
+  to a net *debit* balance. `get_trial_balance`'s output matched the
+  hand-computed expectation on every account exactly, including Sales
+  Revenue correctly appearing in the debit column despite being a revenue
+  account, and the debit/credit column totals were equal (6200 = 6200) as
+  guaranteed by the report's design. Zero-balance accounts (Accounts
+  Payable, Tax Payable, Retained Earnings) were confirmed present in the
+  output, not silently dropped. Permission denial was verified live (no
+  JWT claim set → "Missing permission: accounting.view_financial" rather
+  than silently succeeding); branch-access behavior was confirmed
+  identical to the pre-existing `get_balance_sheet`/`get_profit_and_loss`
+  checks (same shared `has_branch_access` call, unchanged by this
+  migration). The test tenant, its branch, chart of accounts, and journal
+  entries were fully torn down afterward, confirmed empty by a final
+  count query. `get_advisors` (security) showed only the same
+  pre-existing baseline already accepted for every other security-definer
+  RPC in this codebase, now including `get_trial_balance` on the same
+  list as its siblings — no new findings. `npx tsc --noEmit`,
+  `npm run lint`, `npx vitest run` (36 passing, unchanged — no schema
+  used by existing tests was touched), and `npm run build` (confirmed
+  `/accounting/reports/trial-balance` present in the route list) all
+  clean.

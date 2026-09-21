@@ -5929,6 +5929,17 @@ export type Database = {
           total_revenue: number
         }[]
       }
+      get_trial_balance: {
+        Args: { p_as_of_date: string; p_branch_id: string; p_tenant_id: string }
+        Returns: {
+          account_id: string
+          account_type: Database["public"]["Enums"]["account_type"]
+          code: string
+          credit: number
+          debit: number
+          name: string
+        }[]
+      }
       has_branch_access: {
         Args: { check_branch_id: string; check_tenant_id: string }
         Returns: boolean
