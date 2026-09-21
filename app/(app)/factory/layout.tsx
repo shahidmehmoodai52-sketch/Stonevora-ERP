@@ -42,7 +42,10 @@ export default async function FactoryLayout({ children }: { children: React.Reac
 
   return (
     <div>
-      <nav className="mb-6 flex gap-4 border-b border-zinc-200 text-sm dark:border-zinc-800">
+      <nav className="mb-6 flex flex-wrap gap-4 border-b border-zinc-200 text-sm dark:border-zinc-800">
+        <Link href="/factory/dashboard" className="flex min-h-11 items-center border-b-2 border-transparent px-1 text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50">
+          Dashboard
+        </Link>
         <Link href="/factory/blocks" className="flex min-h-11 items-center border-b-2 border-transparent px-1 text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50">
           Blocks
         </Link>
@@ -51,6 +54,9 @@ export default async function FactoryLayout({ children }: { children: React.Reac
         </Link>
         <Link href="/factory/qc" className="flex min-h-11 items-center border-b-2 border-transparent px-1 text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50">
           QC
+        </Link>
+        <Link href="/factory/reports" className="flex min-h-11 items-center border-b-2 border-transparent px-1 text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50">
+          Production Reports
         </Link>
       </nav>
       {children}

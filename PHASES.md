@@ -2081,3 +2081,68 @@ verified before the next begins.
   findings. `npx tsc --noEmit`, `npm run lint`, `npx vitest run` (37
   passing, up from 36 — the new offline-registry test), and `npm run
   build` all clean.
+- **Factory dashboard + production-by-machine/operator reports** ✅:
+  closes the fifth real gap this session's own 36-part spec audit found —
+  Part 20 (Factory Operations Dashboard) asks for a floor-level WIP/QC-
+  pending/dispatch-pending view plus machine/operator productivity, on
+  top of the general cross-module dashboard Phase 8 already built.
+  **Migration** (`supabase/migrations/0057_factory_dashboard.sql`): three
+  new RPCs, same shape as Phase 8's reporting layer.
+  `get_factory_dashboard(p_tenant_id, p_branch_id)` counts WIP across
+  both production paradigms this tenant may have enabled
+  (`processing_jobs`/`production_batches` in `'in_progress'`); QC pending
+  directly reuses the 3-status re-inspectable set this session's own QC-
+  outcomes-expansion migration (0054) introduced
+  (`'pending_qc'`/`'needs_rework'`/`'on_hold'`), branch-scoped through the
+  same join `record_qc_inspection`/`record_batch_qc_inspection`
+  themselves use (neither inventory table carries its own `branch_id`);
+  "dispatch pending" is confirmed-but-not-fully-delivered sales orders
+  (`'confirmed'`/`'partially_delivered'`) — the practical floor question
+  "what's ready to ship but hasn't gone yet" — deliberately not a literal
+  count of deliveries in `'draft'` status, since `createDeliveryAction`
+  never leaves one there in practice.
+  `get_production_by_machine`/`get_production_by_operator(p_tenant_id,
+  p_branch_id, p_start_date, p_end_date)` roll up completed processing
+  jobs by their own `machine` text field or `operator_id`, reusing the
+  exact figures Milestones 4/6 already computed and stored on each job
+  (`actual_slab_count`, `actual_remnant_count`, `yield_percentage`,
+  `total_cost`) rather than re-deriving anything — one source of truth,
+  the same `get_dashboard_summary`-reuses-`get_profit_and_loss`
+  convention Phase 8 already established. Tile Manufacturing's
+  `production_batches` has no `operator_id` and only a `kiln_number` in
+  place of `machine` — a real, narrower boundary, not an oversight: a
+  by-kiln equivalent is intentionally left out rather than forcing an
+  operator dimension that table doesn't have. All three gated on
+  `'production'.'view'` only (not `'view_cost'`) since job cost is
+  already shown unredacted on the existing job detail page with no
+  special gate — this report invents no new redaction rule the rest of
+  the app doesn't have. A job with no `machine`/`operator_id` recorded
+  rolls up under `'Unspecified'`/a null-operator `'Unassigned'` row
+  rather than being silently dropped.
+  **UI**: `/factory/dashboard` (five-tile KPI row, branch filter,
+  reusing the exact `Tiles` pattern from `/reports`) and `/factory/reports`
+  (side-by-side by-machine/by-operator tables with branch + date-range
+  filters, reusing `/reports/sales`'s two-column layout exactly), both
+  linked from the Factory section's nav.
+  **Live-verified** against a fresh test tenant on the real Supabase
+  project: two blocks were cut into completed, costed jobs on two
+  different machines (one with an operator set, one without), a third
+  left `in_progress` as WIP; `get_factory_dashboard` returned exactly 1
+  WIP job, 2 QC-pending units (both completed jobs' still-uninspected
+  output slabs), and 1 dispatch-pending order (a confirmed sales order
+  created for the test) — every figure matching hand-computed
+  expectations exactly. `get_production_by_machine`/`get_production_by_
+  operator` both correctly split the two jobs by machine and by
+  operator/`'Unassigned'`, with job counts, slab counts, yield
+  percentages, and costs all matching the underlying job rows exactly.
+  Permission denial was verified live (no JWT claim → "Missing
+  permission: production.view"); a date range outside the completed
+  jobs' actual completion date was confirmed to return an empty result
+  rather than a stale or incorrect row. The test tenant and all its
+  fixtures were fully torn down afterward, confirmed empty by a final
+  count query. `get_advisors` (security) showed only the same
+  pre-existing baseline, now including all three new RPCs — no new
+  findings. `npx tsc --noEmit`, `npm run lint`, `npx vitest run` (37
+  passing, unchanged), and `npm run build` (confirmed both
+  `/factory/dashboard` and `/factory/reports` present in the route list)
+  all clean.

@@ -5856,6 +5856,16 @@ export type Database = {
           total_revenue: number
         }[]
       }
+      get_factory_dashboard: {
+        Args: { p_branch_id: string; p_tenant_id: string }
+        Returns: {
+          dispatch_pending_orders: number
+          qc_pending_batches: number
+          qc_pending_units: number
+          wip_processing_jobs: number
+          wip_production_batches: number
+        }[]
+      }
       get_inventory_valuation: {
         Args: { p_tenant_id: string }
         Returns: {
@@ -5889,6 +5899,39 @@ export type Database = {
           supplier_id: string
           supplier_name: string
           total_outstanding: number
+        }[]
+      }
+      get_production_by_machine: {
+        Args: {
+          p_branch_id: string
+          p_end_date: string
+          p_start_date: string
+          p_tenant_id: string
+        }
+        Returns: {
+          avg_yield_pct: number
+          job_count: number
+          machine: string
+          total_cost: number
+          total_remnants: number
+          total_slabs: number
+        }[]
+      }
+      get_production_by_operator: {
+        Args: {
+          p_branch_id: string
+          p_end_date: string
+          p_start_date: string
+          p_tenant_id: string
+        }
+        Returns: {
+          avg_yield_pct: number
+          job_count: number
+          operator_id: string
+          operator_name: string
+          total_cost: number
+          total_remnants: number
+          total_slabs: number
         }[]
       }
       get_profit_and_loss: {
