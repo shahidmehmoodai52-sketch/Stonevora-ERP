@@ -2010,3 +2010,74 @@ verified before the next begins.
   used by existing tests was touched), and `npm run build` (confirmed
   `/accounting/reports/trial-balance` present in the route list) all
   clean.
+- **Dispatch/logistics fields on deliveries** ✅: closes the fourth real
+  gap this session's own 36-part spec audit found — Part 12 (Dispatch/
+  Logistics) asks for transporter, proof-of-delivery, and export-shipment
+  details, but `deliveries` only ever had `vehicle_info`/`driver_name`
+  columns, and even those two were never wired into the create-delivery
+  form (a gap confirmed live by re-reading the form before touching
+  anything). Closing this also finally wires up one genuinely dead piece
+  of pre-existing schema: `delivery_status` has always had a `'delivered'`
+  value, but nothing in the codebase ever set it — `dispatch_delivery`
+  only ever moves `'draft'` → `'dispatched'`. Proof-of-delivery is the
+  natural, minimal place to close that.
+  **Migration** (`supabase/migrations/0056_delivery_logistics.sql`): a new
+  `incoterm` enum (the 11 standard Incoterms 2020 codes — a genuinely
+  bounded set, so it earns a real enum, consistent with this codebase's
+  existing convention, unlike the other new fields below); eight new
+  nullable columns on `deliveries` (`transporter_name`,
+  `container_number`, `shipment_reference`, `port_of_loading`,
+  `port_of_discharge`, `incoterm`, `pod_received_by`, `pod_notes`,
+  `pod_received_at`) — all free text except `incoterm`, since none of
+  them drive any business logic, the same operational-record-keeping role
+  `vehicle_info`/`driver_name` already played; and a new
+  `confirm_delivery_pod(p_delivery_id, p_pod_received_by, p_pod_notes)`
+  RPC, same permission/branch-access shape as `dispatch_delivery`
+  (`sales.edit` + `has_branch_access`), gated on the delivery being
+  `'dispatched'` (not `'draft'` — nothing to confirm receipt of yet — and
+  not already `'delivered'` — no re-confirmation, matching every other
+  terminal-status RPC in this codebase), moving it to `'delivered'` and
+  stamping `pod_received_at = now()`.
+  **Application layer**: `createDeliveryAction` now captures
+  `vehicleInfo`/`driverName` (finally) plus all six new free-text
+  logistics fields and a validated `incoterm` (rejects anything outside
+  the 11 real codes before it ever reaches the database);
+  `NewDeliveryForm.tsx` gained a collapsible "Logistics details
+  (optional)" `<details>` section so the required delivery-number/line
+  fields stay the prominent, uncluttered default; a new
+  `confirmDeliveryPodAction` + `ConfirmPodForm.tsx` (mirroring
+  `GenerateInvoiceForm.tsx`'s existing shape exactly) let a dispatched
+  delivery be marked delivered with a received-by name and POD notes; the
+  sales order detail page's deliveries table now shows a compact
+  logistics summary line and, once delivered, the POD particulars, and
+  renders the new confirm-delivery form only for `'dispatched'` rows. One
+  necessary side effect of finally activating the `'delivered'` status:
+  the existing "generate invoice" button was gated on
+  `status === 'dispatched'` only, which would have silently hidden
+  invoicing the moment a delivery reached `'delivered'` — extended to
+  `'dispatched' || 'delivered'`, matching what
+  `generate_sales_invoice_from_delivery` itself has always allowed
+  (it only ever rejected `'draft'`). Wired into the offline action
+  registry (`confirmDeliveryPod`) and its test, alongside the existing
+  `createDelivery`/`generateInvoice` entries.
+  **Live-verified** against a fresh test tenant on the real Supabase
+  project: a full trading-loop delivery was created with all eight new
+  fields populated (transporter, vehicle, driver, container, shipment
+  reference, both ports, CIF incoterm) and confirmed stored correctly
+  after `dispatch_delivery`; `confirm_delivery_pod` correctly rejected a
+  still-`'draft'` delivery ("must be dispatched"), then succeeded on the
+  dispatched one (status → `'delivered'`, `pod_received_by`/`pod_notes`/
+  `pod_received_at` all populated), then correctly rejected a second
+  confirmation attempt on the now-`'delivered'` row; permission denial
+  was verified live (no JWT claim → "Missing permission: sales.edit");
+  an invalid incoterm value was confirmed rejected at the database enum
+  level; and `generate_sales_invoice_from_delivery` was confirmed to still
+  succeed against the now-`'delivered'` delivery, proving the UI
+  button-visibility fix matches the RPC's real, pre-existing behavior
+  rather than just papering over the new status. The test tenant and all
+  its fixtures were fully torn down afterward, confirmed empty by a final
+  count query. `get_advisors` (security) showed only the same
+  pre-existing baseline, now including `confirm_delivery_pod` — no new
+  findings. `npx tsc --noEmit`, `npm run lint`, `npx vitest run` (37
+  passing, up from 36 — the new offline-registry test), and `npm run
+  build` all clean.

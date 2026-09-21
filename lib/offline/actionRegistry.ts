@@ -3,6 +3,7 @@ import {
   createSalesOrderAction,
   createDeliveryAction,
   generateInvoiceAction,
+  confirmDeliveryPodAction,
   createSalesReturnAction,
 } from "@/actions/sales";
 import {
@@ -67,6 +68,12 @@ export const offlineActionRegistry: Record<
   createDelivery: (formData) => createDeliveryAction(String(formData.get("__salesOrderId") ?? ""), formData),
   generateInvoice: (formData) =>
     generateInvoiceAction(
+      String(formData.get("__deliveryId") ?? ""),
+      String(formData.get("__salesOrderId") ?? ""),
+      formData
+    ),
+  confirmDeliveryPod: (formData) =>
+    confirmDeliveryPodAction(
       String(formData.get("__deliveryId") ?? ""),
       String(formData.get("__salesOrderId") ?? ""),
       formData

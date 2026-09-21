@@ -604,46 +604,73 @@ export type Database = {
       deliveries: {
         Row: {
           branch_id: string
+          container_number: string | null
           created_at: string
           created_by: string | null
           delivery_date: string
           delivery_number: string
           driver_name: string | null
           id: string
+          incoterm: Database["public"]["Enums"]["incoterm"] | null
           notes: string | null
+          pod_notes: string | null
+          pod_received_at: string | null
+          pod_received_by: string | null
+          port_of_discharge: string | null
+          port_of_loading: string | null
           sales_order_id: string
+          shipment_reference: string | null
           status: Database["public"]["Enums"]["delivery_status"]
           tenant_id: string
+          transporter_name: string | null
           vehicle_info: string | null
           warehouse_id: string
         }
         Insert: {
           branch_id: string
+          container_number?: string | null
           created_at?: string
           created_by?: string | null
           delivery_date?: string
           delivery_number: string
           driver_name?: string | null
           id?: string
+          incoterm?: Database["public"]["Enums"]["incoterm"] | null
           notes?: string | null
+          pod_notes?: string | null
+          pod_received_at?: string | null
+          pod_received_by?: string | null
+          port_of_discharge?: string | null
+          port_of_loading?: string | null
           sales_order_id: string
+          shipment_reference?: string | null
           status?: Database["public"]["Enums"]["delivery_status"]
           tenant_id: string
+          transporter_name?: string | null
           vehicle_info?: string | null
           warehouse_id: string
         }
         Update: {
           branch_id?: string
+          container_number?: string | null
           created_at?: string
           created_by?: string | null
           delivery_date?: string
           delivery_number?: string
           driver_name?: string | null
           id?: string
+          incoterm?: Database["public"]["Enums"]["incoterm"] | null
           notes?: string | null
+          pod_notes?: string | null
+          pod_received_at?: string | null
+          pod_received_by?: string | null
+          port_of_discharge?: string | null
+          port_of_loading?: string | null
           sales_order_id?: string
+          shipment_reference?: string | null
           status?: Database["public"]["Enums"]["delivery_status"]
           tenant_id?: string
+          transporter_name?: string | null
           vehicle_info?: string | null
           warehouse_id?: string
         }
@@ -5746,6 +5773,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      confirm_delivery_pod: {
+        Args: {
+          p_delivery_id: string
+          p_pod_notes?: string
+          p_pod_received_by?: string
+        }
+        Returns: undefined
+      }
       confirm_sales_order: {
         Args: { p_sales_order_id: string }
         Returns: undefined
@@ -6065,6 +6100,18 @@ export type Database = {
         | "international"
       delivery_status: "draft" | "dispatched" | "delivered"
       goods_receipt_status: "draft" | "posted"
+      incoterm:
+        | "EXW"
+        | "FCA"
+        | "FAS"
+        | "FOB"
+        | "CFR"
+        | "CIF"
+        | "CPT"
+        | "CIP"
+        | "DAP"
+        | "DPU"
+        | "DDP"
       inventory_batch_status:
         | "pending_qc"
         | "in_stock"
@@ -6273,6 +6320,19 @@ export const Constants = {
       ],
       delivery_status: ["draft", "dispatched", "delivered"],
       goods_receipt_status: ["draft", "posted"],
+      incoterm: [
+        "EXW",
+        "FCA",
+        "FAS",
+        "FOB",
+        "CFR",
+        "CIF",
+        "CPT",
+        "CIP",
+        "DAP",
+        "DPU",
+        "DDP",
+      ],
       inventory_batch_status: [
         "pending_qc",
         "in_stock",

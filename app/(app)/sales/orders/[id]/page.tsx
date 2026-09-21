@@ -2,10 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveTenant } from "@/lib/tenant/getActiveTenant";
-import { confirmSalesOrderAction, createDeliveryAction, generateInvoiceAction } from "@/actions/sales";
+import { confirmSalesOrderAction, createDeliveryAction, generateInvoiceAction, confirmDeliveryPodAction } from "@/actions/sales";
 import { ConfirmOrderButton } from "./ConfirmOrderButton";
 import { NewDeliveryForm } from "./NewDeliveryForm";
 import { GenerateInvoiceForm } from "./GenerateInvoiceForm";
+import { ConfirmPodForm } from "./ConfirmPodForm";
 
 export default async function SalesOrderDetailPage({
   params,
@@ -28,7 +29,9 @@ export default async function SalesOrderDetailPage({
       .eq("sales_order_id", id),
     supabase
       .from("deliveries")
-      .select("id, delivery_number, delivery_date, status")
+      .select(
+        "id, delivery_number, delivery_date, status, vehicle_info, driver_name, transporter_name, container_number, shipment_reference, port_of_loading, port_of_discharge, incoterm, pod_received_by, pod_notes, pod_received_at"
+      )
       .eq("sales_order_id", id)
       .order("delivery_date", { ascending: false }),
     supabase.from("sales_invoices").select("id, invoice_number, sales_order_id").eq("sales_order_id", id),
@@ -89,13 +92,39 @@ export default async function SalesOrderDetailPage({
           <tbody>
             {(deliveries ?? []).map((d) => {
               const invoice = (invoices ?? []).find((inv) => inv.sales_order_id === so.id);
+              const logisticsParts = [
+                d.transporter_name,
+                d.vehicle_info,
+                d.driver_name,
+                d.incoterm,
+                d.container_number,
+                d.shipment_reference,
+              ].filter(Boolean);
               return (
                 <tr key={d.id} className="border-b border-zinc-100 dark:border-zinc-900">
                   <td className="py-2">{d.delivery_number}</td>
                   <td className="py-2">{d.delivery_date}</td>
-                  <td className="py-2">{d.status}</td>
                   <td className="py-2">
-                    {d.status === "dispatched" && !invoice && (
+                    {d.status}
+                    {logisticsParts.length > 0 && (
+                      <div className="text-xs text-zinc-500">{logisticsParts.join(" · ")}</div>
+                    )}
+                    {d.status === "delivered" && (d.pod_received_by || d.pod_notes) && (
+                      <div className="text-xs text-zinc-500">
+                        POD: {d.pod_received_by || "—"}
+                        {d.pod_notes ? ` (${d.pod_notes})` : ""}
+                      </div>
+                    )}
+                  </td>
+                  <td className="py-2">
+                    {d.status === "dispatched" && (
+                      <ConfirmPodForm
+                        deliveryId={d.id}
+                        salesOrderId={so.id}
+                        action={confirmDeliveryPodAction}
+                      />
+                    )}
+                    {(d.status === "dispatched" || d.status === "delivered") && !invoice && (
                       <GenerateInvoiceForm
                         deliveryId={d.id}
                         salesOrderId={so.id}

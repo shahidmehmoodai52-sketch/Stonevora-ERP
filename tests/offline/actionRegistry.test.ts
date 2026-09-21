@@ -13,6 +13,7 @@ vi.mock("@/actions/sales", () => ({
   createSalesOrderAction: vi.fn(async () => ({ success: true }) as const),
   createDeliveryAction: vi.fn(async () => ({ success: true }) as const),
   generateInvoiceAction: vi.fn(async () => ({ success: true }) as const),
+  confirmDeliveryPodAction: vi.fn(async () => ({ success: true }) as const),
   createSalesReturnAction: vi.fn(async () => ({ success: true }) as const),
 }));
 vi.mock("@/actions/purchasing", () => ({
@@ -58,7 +59,8 @@ vi.mock("@/actions/accounting", () => ({
   postJournalEntryAction: vi.fn(async () => ({ success: true }) as const),
 }));
 
-const { createDeliveryAction, generateInvoiceAction, createSalesReturnAction } = await import("@/actions/sales");
+const { createDeliveryAction, generateInvoiceAction, confirmDeliveryPodAction, createSalesReturnAction } =
+  await import("@/actions/sales");
 const { createGoodsReceiptAction, createPurchaseReturnAction } = await import("@/actions/purchasing");
 const { recordCustomerPaymentAction, recordSupplierPaymentAction } = await import("@/actions/payments");
 const { createStockAdjustmentAction } = await import("@/actions/inventory");
@@ -112,6 +114,12 @@ describe("offline action registry: extracting a bound id from a hidden field", (
     const formData = formDataWith({ __deliveryId: "del-789", __salesOrderId: "so-456", invoiceNumber: "INV-1" });
     await offlineActionRegistry.generateInvoice(formData);
     expect(generateInvoiceAction).toHaveBeenCalledWith("del-789", "so-456", formData);
+  });
+
+  test("confirmDeliveryPod reads __deliveryId and __salesOrderId and calls the real action with (deliveryId, salesOrderId, formData)", async () => {
+    const formData = formDataWith({ __deliveryId: "del-789", __salesOrderId: "so-456", podReceivedBy: "Ali" });
+    await offlineActionRegistry.confirmDeliveryPod(formData);
+    expect(confirmDeliveryPodAction).toHaveBeenCalledWith("del-789", "so-456", formData);
   });
 
   test("createSalesOrder and createPurchaseOrder pass formData straight through, no bound id to extract", async () => {

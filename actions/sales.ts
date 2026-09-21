@@ -177,6 +177,20 @@ export async function createDeliveryAction(
     return { error: "Delivery number, branch and warehouse are required" };
   }
 
+  const vehicleInfo = String(formData.get("vehicleInfo") ?? "").trim();
+  const driverName = String(formData.get("driverName") ?? "").trim();
+  const transporterName = String(formData.get("transporterName") ?? "").trim();
+  const containerNumber = String(formData.get("containerNumber") ?? "").trim();
+  const shipmentReference = String(formData.get("shipmentReference") ?? "").trim();
+  const portOfLoading = String(formData.get("portOfLoading") ?? "").trim();
+  const portOfDischarge = String(formData.get("portOfDischarge") ?? "").trim();
+  const incotermRaw = String(formData.get("incoterm") ?? "").trim();
+  const incoterms = ["EXW", "FCA", "FAS", "FOB", "CFR", "CIF", "CPT", "CIP", "DAP", "DPU", "DDP"] as const;
+  if (incotermRaw && !incoterms.includes(incotermRaw as (typeof incoterms)[number])) {
+    return { error: "Invalid incoterm" };
+  }
+  const incoterm = incotermRaw as (typeof incoterms)[number] | "";
+
   const lineIds = formData.getAll("lineId").map(String);
   const quantities = formData.getAll("lineQuantity").map(String);
   const productIds = formData.getAll("lineProductId").map(String);
@@ -192,6 +206,14 @@ export async function createDeliveryAction(
       sales_order_id: salesOrderId,
       delivery_number: deliveryNumber,
       status: "draft",
+      vehicle_info: vehicleInfo || null,
+      driver_name: driverName || null,
+      transporter_name: transporterName || null,
+      container_number: containerNumber || null,
+      shipment_reference: shipmentReference || null,
+      port_of_loading: portOfLoading || null,
+      port_of_discharge: portOfDischarge || null,
+      incoterm: incoterm || null,
     })
     .select("id")
     .single();
@@ -216,6 +238,29 @@ export async function createDeliveryAction(
     p_delivery_id: delivery.id,
   });
   if (dispatchError) return { error: dispatchError.message };
+
+  revalidatePath(`/sales/orders/${salesOrderId}`);
+  return { success: true };
+}
+
+export async function confirmDeliveryPodAction(
+  deliveryId: string,
+  salesOrderId: string,
+  formData: FormData
+): Promise<ActionResult> {
+  const tenant = await requireActiveTenant();
+  await requirePermission(tenant.tenantId, "sales", "edit");
+
+  const podReceivedBy = String(formData.get("podReceivedBy") ?? "").trim();
+  const podNotes = String(formData.get("podNotes") ?? "").trim();
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("confirm_delivery_pod", {
+    p_delivery_id: deliveryId,
+    p_pod_received_by: podReceivedBy || undefined,
+    p_pod_notes: podNotes || undefined,
+  });
+  if (error) return { error: error.message };
 
   revalidatePath(`/sales/orders/${salesOrderId}`);
   return { success: true };
