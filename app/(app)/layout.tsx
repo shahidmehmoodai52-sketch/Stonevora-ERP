@@ -1,12 +1,26 @@
 import Link from "next/link";
 import { requireActiveTenant, listUserTenants } from "@/lib/tenant/getActiveTenant";
 import { signOutAction } from "@/actions/auth";
+import { createClient } from "@/lib/supabase/server";
 import { OfflineProvider } from "@/lib/offline/OfflineProvider";
 import { OfflineStatusBadge } from "@/lib/offline/OfflineStatusBadge";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const tenant = await requireActiveTenant();
   const memberships = await listUserTenants();
+  const supabase = await createClient();
+
+  // Factory/Projects/Manufacturing/Reservations are optional business
+  // capabilities (see Settings -> Business capabilities, which already
+  // promises "nothing you don't enable shows up") -- only showing their nav
+  // tabs when actually enabled, instead of always showing all 4 regardless,
+  // is what makes that promise true and keeps a simple trading-only tenant's
+  // nav down to the 7 tabs it actually uses.
+  const { data: enabledRows } = await supabase
+    .from("tenant_capabilities")
+    .select("business_capabilities(code)")
+    .eq("tenant_id", tenant.tenantId);
+  const enabled = new Set((enabledRows ?? []).map((r) => r.business_capabilities?.code));
 
   return (
     <OfflineProvider tenantId={tenant.tenantId}>
@@ -14,13 +28,22 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
           <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-y-2 px-4 py-3 sm:px-6">
             <div className="flex min-w-0 items-center gap-4 sm:gap-6">
-              <span className="flex shrink-0 items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+              <Link
+                href="/reports"
+                className="flex shrink-0 items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-zinc-50"
+              >
                 <span className="flex h-6 w-6 items-center justify-center rounded bg-zinc-900 text-xs font-bold text-amber-500 dark:bg-zinc-800">
                   S
                 </span>
                 Stonevora
-              </span>
+              </Link>
               <nav className="flex items-center gap-1 text-sm text-zinc-600 dark:text-zinc-400">
+                <Link
+                  href="/reports"
+                  className="flex min-h-11 items-center px-2 hover:text-zinc-900 dark:hover:text-zinc-50"
+                >
+                  Dashboard
+                </Link>
                 <Link
                   href="/products"
                   className="flex min-h-11 items-center px-2 hover:text-zinc-900 dark:hover:text-zinc-50"
@@ -45,36 +68,38 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 >
                   Inventory
                 </Link>
-                <Link
-                  href="/factory/blocks"
-                  className="flex min-h-11 items-center px-2 hover:text-zinc-900 dark:hover:text-zinc-50"
-                >
-                  Factory
-                </Link>
-                <Link
-                  href="/projects"
-                  className="flex min-h-11 items-center px-2 hover:text-zinc-900 dark:hover:text-zinc-50"
-                >
-                  Projects
-                </Link>
-                <Link
-                  href="/manufacturing/boms"
-                  className="flex min-h-11 items-center px-2 hover:text-zinc-900 dark:hover:text-zinc-50"
-                >
-                  Manufacturing
-                </Link>
-                <Link
-                  href="/reservations"
-                  className="flex min-h-11 items-center px-2 hover:text-zinc-900 dark:hover:text-zinc-50"
-                >
-                  Reservations
-                </Link>
-                <Link
-                  href="/reports"
-                  className="flex min-h-11 items-center px-2 hover:text-zinc-900 dark:hover:text-zinc-50"
-                >
-                  Reports
-                </Link>
+                {enabled.has("block_slab_factory") && (
+                  <Link
+                    href="/factory/dashboard"
+                    className="flex min-h-11 items-center px-2 hover:text-zinc-900 dark:hover:text-zinc-50"
+                  >
+                    Factory
+                  </Link>
+                )}
+                {enabled.has("stone_fabrication") && (
+                  <Link
+                    href="/projects"
+                    className="flex min-h-11 items-center px-2 hover:text-zinc-900 dark:hover:text-zinc-50"
+                  >
+                    Projects
+                  </Link>
+                )}
+                {enabled.has("tile_manufacturing") && (
+                  <Link
+                    href="/manufacturing/boms"
+                    className="flex min-h-11 items-center px-2 hover:text-zinc-900 dark:hover:text-zinc-50"
+                  >
+                    Manufacturing
+                  </Link>
+                )}
+                {enabled.has("showroom_reservation") && (
+                  <Link
+                    href="/reservations"
+                    className="flex min-h-11 items-center px-2 hover:text-zinc-900 dark:hover:text-zinc-50"
+                  >
+                    Reservations
+                  </Link>
+                )}
                 <Link
                   href="/accounting/chart-of-accounts"
                   className="flex min-h-11 items-center px-2 hover:text-zinc-900 dark:hover:text-zinc-50"

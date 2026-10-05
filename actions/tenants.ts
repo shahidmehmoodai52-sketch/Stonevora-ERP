@@ -45,7 +45,7 @@ export async function createTenantAction(formData: FormData) {
     path: "/",
   });
 
-  redirect("/products");
+  redirect("/reports");
 }
 
 // Sets which of the user's own tenant memberships subsequent requests default to.
@@ -59,5 +59,5 @@ export async function selectTenantAction(tenantId: string) {
     secure: process.env.NODE_ENV === "production",
     path: "/",
   });
-  redirect("/products");
+  redirect("/reports");
 }

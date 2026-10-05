@@ -10,7 +10,7 @@ export default function robots(): MetadataRoute.Robots {
         allow: "/",
         // The authenticated app and its data are behind auth/RLS regardless,
         // but there's no reason for crawlers to spend budget on tenant screens.
-        disallow: ["/products", "/settings", "/onboarding", "/select-tenant"],
+        disallow: ["/products", "/reports", "/settings", "/onboarding", "/select-tenant"],
       },
     ],
     sitemap: `${base}/sitemap.xml`,

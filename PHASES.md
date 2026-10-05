@@ -2329,3 +2329,54 @@ real Supabase project (including negative/permission/security cases,
 not just the happy path), documented here, and shipped through the same
 typecheck → lint → test → build → commit → push pipeline as every
 earlier phase in this project.
+
+**UX simplification: no onboarding flow and an unconditional 11-tab nav
+(post-launch user feedback).** After the first real deployment, the
+app's own owner-user reported the live app had "no sequence" and was
+too complicated for a non-technical person to follow. Two concrete,
+root-caused problems, not a vague "simplify the UI": (1) every
+post-login/post-signup path (`app/page.tsx`, `app/select-tenant/page.tsx`,
+both redirects in `actions/tenants.ts`) dropped a brand-new user
+straight onto `/products` — an empty product list with zero guidance on
+what to do first — instead of anywhere that explained the setup order;
+(2) `app/(app)/layout.tsx`'s top nav unconditionally rendered all 11
+top-level tabs (Factory, Projects, Manufacturing, Reservations included)
+regardless of which optional business capability a tenant had actually
+enabled, directly contradicting Settings → Capabilities' own copy
+("nothing you don't enable shows up") — a factory-less trading/retail
+tenant saw four dead tabs leading to screens with nothing meaningful to
+do.
+**Fix, not a redesign**: the existing `/reports` dashboard (renamed
+"Dashboard" and made the default post-login landing page everywhere
+`/products` used to be the default) now opens with a new
+`components/GettingStarted.tsx` — a 5-step ordered checklist (branch →
+warehouse → first product → first supplier → first customer-and-sale),
+each step computed from real counts already queried for the dashboard
+(branches/warehouses/products/suppliers/customers+sales-orders), each
+item a link to the exact screen that completes it, and the whole
+component rendering nothing once every step is done so it never gets in
+an established user's way. The top nav now reads the tenant's own
+`tenant_capabilities` (joined to `business_capabilities.code`, the same
+join `Settings → Capabilities` itself uses) and only renders
+Factory/Projects/Manufacturing/Reservations when `block_slab_factory`/
+`stone_fabrication`/`tile_manufacturing`/`showroom_reservation` is
+actually enabled — making the nav match what Settings already promised
+instead of adding a second onboarding system or a wizard on top of the
+existing one (`/onboarding` already exists for company creation and was
+left untouched).
+**No schema change** — this is nav/redirect/dashboard-composition only,
+so no migration was needed. Verified via `npx tsc --noEmit`, `npm run
+lint`, and `npx vitest run` (37 passing, unchanged) all clean, and
+`npm run build` completing successfully (confirmed the full route list
+generates with no errors, which also regenerates Next.js's own
+`LayoutProps` global type — an unrelated environment hiccup from a mid-
+session container restore that dropped `node_modules/vitest`, fixed by
+a plain `npm install` before this build). The `tenant_capabilities` →
+`business_capabilities` join used in the new nav code was re-confirmed
+by reading `supabase/migrations/0031_business_capabilities.sql`
+directly (`tenant_capabilities.capability_id` is the sole FK to
+`business_capabilities.id`, so the PostgREST embed
+`business_capabilities(code)` is the correct, already-established
+shape) after a transient Supabase MCP connection timeout prevented a
+live round-trip query — a reasonable substitute given this change adds
+no new table and no new RLS surface to verify.

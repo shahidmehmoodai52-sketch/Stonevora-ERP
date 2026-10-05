@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireActiveTenant } from "@/lib/tenant/getActiveTenant";
+import { GettingStarted } from "@/components/GettingStarted";
 
 function firstOfMonth(): string {
   const now = new Date();
@@ -33,11 +34,15 @@ export default async function DashboardPage({
   const tenant = await requireActiveTenant();
   const supabase = await createClient();
 
-  const { data: branches } = await supabase
-    .from("branches")
-    .select("id, name")
-    .eq("tenant_id", tenant.tenantId)
-    .order("name");
+  const [{ data: branches }, { count: warehouseCount }, { count: productCount }, { count: supplierCount }, { count: customerCount }, { count: salesOrderCount }] =
+    await Promise.all([
+      supabase.from("branches").select("id, name").eq("tenant_id", tenant.tenantId).order("name"),
+      supabase.from("warehouses").select("id", { count: "exact", head: true }).eq("tenant_id", tenant.tenantId),
+      supabase.from("products").select("id", { count: "exact", head: true }).eq("tenant_id", tenant.tenantId),
+      supabase.from("suppliers").select("id", { count: "exact", head: true }).eq("tenant_id", tenant.tenantId),
+      supabase.from("customers").select("id", { count: "exact", head: true }).eq("tenant_id", tenant.tenantId),
+      supabase.from("sales_orders").select("id", { count: "exact", head: true }).eq("tenant_id", tenant.tenantId),
+    ]);
 
   const branchId = params.branchId || branches?.[0]?.id || "";
   const startDate = params.startDate || firstOfMonth();
@@ -69,6 +74,16 @@ export default async function DashboardPage({
   return (
     <div className="max-w-3xl">
       <h1 className="mb-6 text-xl font-semibold text-zinc-900 dark:text-zinc-50">Dashboard</h1>
+
+      <GettingStarted
+        steps={[
+          { label: "Set up your branch", href: "/settings/branches", done: (branches ?? []).length > 0 },
+          { label: "Add a warehouse", href: "/settings/warehouses", done: (warehouseCount ?? 0) > 0 },
+          { label: "Add your first product", href: "/products/new", done: (productCount ?? 0) > 0 },
+          { label: "Add a supplier", href: "/purchasing/suppliers", done: (supplierCount ?? 0) > 0 },
+          { label: "Add a customer and make your first sale", href: "/sales/customers", done: (customerCount ?? 0) > 0 && (salesOrderCount ?? 0) > 0 },
+        ]}
+      />
 
       <form method="get" className="mb-8 flex flex-wrap items-end gap-4">
         <label className="flex flex-col gap-1 text-sm">

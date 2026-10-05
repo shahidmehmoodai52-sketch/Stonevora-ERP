@@ -13,7 +13,7 @@ export default async function SelectTenantPage() {
 
   const memberships = await listUserTenants();
   if (memberships.length === 0) redirect("/onboarding");
-  if (memberships.length === 1) redirect("/products");
+  if (memberships.length === 1) redirect("/reports");
 
   return (
     <div className="flex flex-1 items-center justify-center bg-zinc-50 px-4 dark:bg-black">
